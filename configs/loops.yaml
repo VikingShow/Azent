@@ -1,0 +1,38 @@
+loops:
+  code-review:
+    name: "代码审查流程"
+    allowModification: true
+    phases:
+      - id: analyze
+        name: "需求分析"
+        acceptance: "明确需要改什么、为什么改"
+        agent: coder
+      - id: implement
+        name: "编码实现"
+        acceptance: "代码通过 lint 和类型检查"
+        agent: coder
+      - id: review
+        name: "代码审查"
+        acceptance: "无安全漏洞、无性能问题"
+        agent: reviewer
+      - id: test
+        name: "测试验证"
+        acceptance: "测试覆盖率 >= 80%"
+        agent: tester
+
+  quick-fix:
+    name: "快速修复流程"
+    allowModification: false
+    phases:
+      - id: diagnose
+        name: "诊断问题"
+        acceptance: "定位到根本原因"
+        agent: coder
+      - id: fix
+        name: "修复"
+        acceptance: "问题不再复现"
+        agent: coder
+      - id: verify
+        name: "验证"
+        acceptance: "修复确认无误"
+        agent: reviewer

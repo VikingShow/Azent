@@ -1,0 +1,45 @@
+agents:
+  coder:
+    id: coder
+    name: Coder
+    description: Writes and modifies code based on requirements.
+    instructions: |
+      You are a skilled code generator. Write clean, minimal, working code.
+      Follow the project's existing conventions. Prefer standard library solutions.
+    model: openai/gpt-4.1
+    maxRetries: 2
+    maxSteps: 10
+    memory: true
+    requireApproval: false
+    mcpServers:
+      filesystem:
+        command: npx
+        args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+
+  reviewer:
+    id: reviewer
+    name: Reviewer
+    description: Reviews code for quality, security, and correctness.
+    instructions: |
+      You are a code reviewer. Check for security vulnerabilities,
+      performance issues, and code quality. Be specific about problems.
+    model: openai/gpt-4.1
+    maxRetries: 1
+    maxSteps: 5
+    memory: true
+
+  tester:
+    id: tester
+    name: Tester
+    description: Writes and runs tests to verify code correctness.
+    instructions: |
+      You are a test engineer. Write concise tests covering edge cases.
+      Run existing test suites and report failures.
+    model: openai/gpt-4.1
+    maxRetries: 2
+    maxSteps: 8
+    memory: true
+
+global:
+  defaultModel: openai/gpt-4.1
+  language: zh-CN
