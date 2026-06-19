@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.azent/memory/
+.azent/mastra.db
+.azent/mastra.db-journal
+*.log
+.env
+.DS_Store

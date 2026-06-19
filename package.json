@@ -1,0 +1,27 @@
+{
+  "name": "azent",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@mastra/core": "latest",
+    "@mastra/memory": "latest",
+    "@mastra/mcp": "latest",
+    "@mastra/libsql": "latest",
+    "@mastra/fastembed": "latest",
+    "ink": "^5.0.0",
+    "yaml": "^2.5.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.0",
+    "typescript": "^5.5.0"
+  },
+  "trustedDependencies": [
+    "onnxruntime-node"
+  ]
+}
