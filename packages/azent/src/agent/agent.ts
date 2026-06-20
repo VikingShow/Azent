@@ -177,6 +177,25 @@ export const layer = Layer.effect(
             mode: "primary",
             native: true,
           },
+          supervisor: {
+            name: "supervisor",
+            description: `Orchestrates multi-phase loops by calling specialized sub-agents in sequence. For complex multi-step tasks.`,
+            options: {},
+            permission: Permission.merge(
+              defaults,
+              Permission.fromConfig({
+                todowrite: "deny",
+                question: "allow",
+                task: {
+                  explore: "allow",
+                  general: "allow",
+                },
+              }),
+              user,
+            ),
+            mode: "primary",
+            native: true,
+          },
           general: {
             name: "general",
             description: `General-purpose agent for researching complex questions and executing multi-step tasks. Use this agent to execute multiple units of work in parallel.`,

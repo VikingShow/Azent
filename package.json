@@ -14,7 +14,7 @@
     "prepare": "husky",
     "random": "echo 'Random script'",
     "sso": "echo 'no sso configured for azent'",
-    "test": "echo 'do not run tests from root' && exit 1"
+    "test": "bun test tests/"
   },
   "workspaces": {
     "packages": [

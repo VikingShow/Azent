@@ -10,7 +10,21 @@ import { InstanceState } from "@/effect/instance-state"
 import { MessageID, PartID } from "../session/schema"
 import EXIT_DESCRIPTION from "./plan-exit.txt"
 
-export const Parameters = Schema.Struct({})
+const LoopPhaseSchema = Schema.Struct({
+  id: Schema.String,
+  agent: Schema.String,
+  feedforward: Schema.String,
+  acceptance: Schema.String,
+})
+
+const LoopTemplateSchema = Schema.Struct({
+  phases: Schema.Array(LoopPhaseSchema),
+})
+
+export const Parameters = Schema.Struct({
+  mode: Schema.Literal("build", "loop"),
+  loopTemplate: Schema.optional(LoopTemplateSchema),
+})
 
 export const PlanExitTool = Tool.define(
   "plan_exit",
@@ -22,28 +36,49 @@ export const PlanExitTool = Tool.define(
     return {
       description: EXIT_DESCRIPTION,
       parameters: Parameters,
-      execute: (_params: {}, ctx: Tool.Context) =>
+      execute: (params: { mode: string; loopTemplate?: { phases: Array<{ id: string; agent: string; feedforward: string; acceptance: string }> } }, ctx: Tool.Context) =>
         Effect.gen(function* () {
           const instance = yield* InstanceState.context
           const info = yield* session.get(ctx.sessionID)
-          const plan = path.relative(instance.worktree, Session.plan(info, instance))
+          const planPath = path.relative(instance.worktree, Session.plan(info, instance))
+
+          const options = []
+          const isLoop = params.mode === "loop" && params.loopTemplate
+
+          if (isLoop) {
+            const phases = params.loopTemplate!.phases.map((p) => p.id).join(" → ")
+            options.push(
+              { label: `Loop`, description: `Multi-phase orchestration: ${phases}` },
+              { label: "Build", description: "Single agent execution" },
+              { label: "Edit", description: "Stay in plan mode to refine" },
+            )
+          } else {
+            options.push(
+              { label: "Build", description: "Switch to build agent and start implementing" },
+              { label: "Edit", description: "Stay in plan mode to refine the plan" },
+            )
+          }
+
           const answers = yield* question.ask({
             sessionID: ctx.sessionID,
             questions: [
               {
-                question: `Plan at ${plan} is complete. Would you like to switch to the build agent and start implementing?`,
-                header: "Build Agent",
+                question: isLoop
+                  ? `Plan at ${planPath} is complete. How would you like to proceed?`
+                  : `Plan at ${planPath} is complete. Would you like to switch to build agent?`,
+                header: "Execute Plan",
                 custom: false,
-                options: [
-                  { label: "Yes", description: "Switch to build agent and start implementing the plan" },
-                  { label: "No", description: "Stay with plan agent to continue refining the plan" },
-                ],
+                options,
               },
             ],
             tool: ctx.callID ? { messageID: ctx.messageID, callID: ctx.callID } : undefined,
           })
 
-          if (answers[0]?.[0] === "No") yield* new Question.RejectedError()
+          const choice = answers[0]?.[0]
+          if (choice === "Edit") yield* new Question.RejectedError()
+
+          const isBuild = choice === "Build" || (!isLoop && choice === "Yes")
+          const targetAgent = isBuild ? "build" : "supervisor"
 
           const messages = yield* session.messages({ sessionID: ctx.sessionID }).pipe(Effect.orDie)
           const lastUser = messages.findLast((item) => item.info.role === "user" && item.info.model)
@@ -55,22 +90,36 @@ export const PlanExitTool = Tool.define(
             sessionID: ctx.sessionID,
             role: "user",
             time: { created: Date.now() },
-            agent: "build",
+            agent: targetAgent,
             model,
           }
           yield* session.updateMessage(msg)
-          yield* session.updatePart({
-            id: PartID.ascending(),
-            messageID: msg.id,
-            sessionID: ctx.sessionID,
-            type: "text",
-            text: `The plan at ${plan} has been approved, you can now edit files. Execute the plan`,
-            synthetic: true,
-          } satisfies SessionV1.TextPart)
 
+          if (isBuild) {
+            yield* session.updatePart({
+              id: PartID.ascending(),
+              messageID: msg.id,
+              sessionID: ctx.sessionID,
+              type: "text",
+              text: `The plan at ${planPath} has been approved, you can now edit files. Execute the plan`,
+              synthetic: true,
+            } satisfies SessionV1.TextPart)
+          } else {
+            const phasesDesc = params.loopTemplate!.phases.map((p) => `  ${p.id} (${p.agent}): ${p.feedforward}`).join("\n")
+            yield* session.updatePart({
+              id: PartID.ascending(),
+              messageID: msg.id,
+              sessionID: ctx.sessionID,
+              type: "text",
+              text: `Starting loop mode with phases:\n${phasesDesc}\n\nPlan: ${planPath}`,
+              synthetic: true,
+            } satisfies SessionV1.TextPart)
+          }
+
+          const label = isBuild ? "build" : "loop"
           return {
-            title: "Switching to build agent",
-            output: "User approved switching to build agent. Wait for further instructions.",
+            title: `Switching to ${label} agent`,
+            output: `User approved switching to ${label} agent. Wait for further instructions.`,
             metadata: {},
           }
         }).pipe(Effect.orDie),
