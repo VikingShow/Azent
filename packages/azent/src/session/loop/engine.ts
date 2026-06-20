@@ -1,4 +1,5 @@
 import { Context, Effect, Layer, Schema } from "effect"
+import { evaluateOutput } from "./evaluate"
 
 export const LoopPhaseSchema = Schema.Struct({
   id: Schema.String,
@@ -39,6 +40,8 @@ export interface Interface {
   readonly getCurrentPhase: (sessionID: string) => LoopPhase | null
   readonly getPhaseStatus: (sessionID: string) => PhaseStatus[]
   readonly isComplete: (sessionID: string) => boolean
+  readonly evaluatePhase: (phaseId: string, output: string, feedforward: string, acceptance: string) => PhaseResult
+  readonly generateSummary: (sessionID: string) => string
 }
 
 type State = Map<string, LoopSession>
@@ -104,6 +107,23 @@ export const layer = Layer.effect(
       isComplete: (sessionID: string) => {
         const session = state.get(sessionID)
         return session?.status === "complete"
+      },
+
+      evaluatePhase: (phaseId: string, output: string, feedforward: string, acceptance: string) => {
+        const result = evaluateOutput(output, feedforward, acceptance)
+        return { phaseId, output, passed: result.passed, feedback: result.feedback }
+      },
+
+      generateSummary: (sessionID: string) => {
+        const session = state.get(sessionID)
+        if (!session || session.results.length === 0) return "No phases executed."
+        const lines = session.plan.phases.map((phase, i) => {
+          const result = session.results[i]
+          const status = result?.passed ? "✓" : "✗"
+          const score = result ? `${result.feedback}` : "not executed"
+          return `  ${status} ${phase.id}: ${score}`
+        })
+        return `Loop "${session.plan.planPath || "unnamed"}" complete.\n${lines.join("\n")}`
       },
     }
   }),
