@@ -48,6 +48,7 @@ import { useDialog } from "../../ui/dialog"
 import { DialogAlert } from "../../ui/dialog-alert"
 import { TodoItem } from "../../component/todo-item"
 import { DialogMessage } from "./dialog-message"
+import { LoopPlanCard, type LoopPlanData, type LoopPhase } from "./loop-plan"
 import type { PromptInfo } from "../../component/prompt/history"
 import { DialogConfirm } from "../../ui/dialog-confirm"
 import { DialogTimeline } from "./dialog-timeline"
@@ -205,6 +206,37 @@ export function Session() {
       .toSorted((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
   })
   const messages = createMemo(() => sync.data.message[route.sessionID] ?? [])
+
+  const loopPlan = createMemo<LoopPlanData | null>(() => {
+    const msgs = messages()
+    for (const msg of msgs) {
+      if (msg.role !== "user") continue
+      const parts = sync.data.part[msg.id]
+      if (!parts) continue
+      for (const part of parts) {
+        if (part.type !== "text" || !part.text) continue
+        const text = part.text
+        if (!text.startsWith("Starting loop mode with phases")) continue
+        const phases: LoopPhase[] = []
+        for (const line of text.split("\n")) {
+          const match = line.match(/^\s+(\S+)\s+\((\S+)\):\s*(.+)$/)
+          if (match) {
+            phases.push({
+              id: match[1]!,
+              agent: match[2]!,
+              feedforward: match[3]!,
+              acceptance: "",
+              status: phases.length === 0 ? "running" : "pending",
+            })
+          }
+        }
+        if (phases.length > 0) {
+          return { phases, currentPhase: 0, planPath: undefined }
+        }
+      }
+    }
+    return null
+  })
   const foregroundTasks = createMemo(() =>
     sync.data.capabilities.experimentalBackgroundSubagents
       ? messages().flatMap((message) =>
@@ -1187,6 +1219,7 @@ export function Session() {
                 scrollAcceleration={scrollAcceleration()}
               >
                 <box height={1} />
+                <LoopPlanCard plan={loopPlan()} />
                 <For each={messages()}>
                   {(message, index) => (
                     <Switch>
