@@ -1,229 +1,129 @@
-# Azent
+<p align="center">
+  <a href="https://opencode.ai">
+    <picture>
+      <source srcset="packages/console/app/src/asset/logo-ornate-dark.svg" media="(prefers-color-scheme: dark)">
+      <source srcset="packages/console/app/src/asset/logo-ornate-light.svg" media="(prefers-color-scheme: light)">
+      <img src="packages/console/app/src/asset/logo-ornate-light.svg" alt="OpenCode logo">
+    </picture>
+  </a>
+</p>
+<p align="center">The open source AI coding agent.</p>
+<p align="center">
+  <a href="https://opencode.ai/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
+  <a href="https://www.npmjs.com/package/opencode-ai"><img alt="npm" src="https://img.shields.io/npm/v/opencode-ai?style=flat-square" /></a>
+  <a href="https://github.com/anomalyco/opencode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/anomalyco/opencode/publish.yml?style=flat-square&branch=dev" /></a>
+</p>
 
-Agent Loop 编排引擎 — 通过前馈-反馈 Loop 驱动多 Agent 协作完成开发任务。
+<p align="center">
+  <a href="README.md">English</a> |
+  <a href="README.zh.md">简体中文</a> |
+  <a href="README.zht.md">繁體中文</a> |
+  <a href="README.ko.md">한국어</a> |
+  <a href="README.de.md">Deutsch</a> |
+  <a href="README.es.md">Español</a> |
+  <a href="README.fr.md">Français</a> |
+  <a href="README.it.md">Italiano</a> |
+  <a href="README.da.md">Dansk</a> |
+  <a href="README.ja.md">日本語</a> |
+  <a href="README.pl.md">Polski</a> |
+  <a href="README.ru.md">Русский</a> |
+  <a href="README.bs.md">Bosanski</a> |
+  <a href="README.ar.md">العربية</a> |
+  <a href="README.no.md">Norsk</a> |
+  <a href="README.br.md">Português (Brasil)</a> |
+  <a href="README.th.md">ไทย</a> |
+  <a href="README.tr.md">Türkçe</a> |
+  <a href="README.uk.md">Українська</a> |
+  <a href="README.bn.md">বাংলা</a> |
+  <a href="README.gr.md">Ελληνικά</a> |
+  <a href="README.vi.md">Tiếng Việt</a>
+</p>
 
-```
-用户 → TUI → Supervisor
-                ├─ architect (分析设计)
-                ├─ coder (编码实现)
-                ├─ reviewer (代码审查)
-                ├─ tester (测试验证)
-                └─ debugger (调试排障)
-```
+[![OpenCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://opencode.ai)
 
-[English](./README.en.md)
+---
 
-## 安装
-
-> 需要 [Bun](https://bun.sh) >= 1.1.0
-
-### 方式 1：npm / bunx（零安装，推荐）
-
-```bash
-cd your-project
-npx @sowrjam/azent
-```
-
-### 方式 2：全局安装
-
-```bash
-npm i -g @sowrjam/azent
-cd your-project
-azent
-```
-
-### 方式 3：从源码运行
-
-```bash
-git clone https://github.com/VikingShow/Azent.git
-cd Azent
-bun install
-bun link
-
-# 以后在任意项目下
-cd your-project
-azent
-```
-
-## 环境变量
-
-Azent 需要两个环境变量来连接 LLM API：
-
-| 变量 | 必填 | 说明 |
-|---|---|---|
-| `OPENAI_API_KEY` | 是 | API 密钥 |
-| `AZENT_BASE_URL` | 是 | API 端点地址 |
-
-### 临时设置（当前终端有效）
+### Installation
 
 ```bash
-export OPENAI_API_KEY=your-key
-export AZENT_BASE_URL=https://your-api-endpoint.com/v1
+# YOLO
+curl -fsSL https://opencode.ai/install | bash
+
+# Package managers
+npm i -g opencode-ai@latest        # or bun/pnpm/yarn
+scoop install opencode             # Windows
+choco install opencode             # Windows
+brew install anomalyco/tap/opencode # macOS and Linux (recommended, always up to date)
+brew install opencode              # macOS and Linux (official brew formula, updated less)
+sudo pacman -S opencode            # Arch Linux (Stable)
+paru -S opencode-bin               # Arch Linux (Latest from AUR)
+mise use -g opencode               # Any OS
+nix run nixpkgs#opencode           # or github:anomalyco/opencode for latest dev branch
 ```
 
-### 永久设置
+> [!TIP]
+> Remove versions older than 0.1.x before installing.
 
-**Linux / macOS（bash/zsh）**：
+### Desktop App (BETA)
+
+OpenCode is also available as a desktop application. Download directly from the [releases page](https://github.com/anomalyco/opencode/releases) or [opencode.ai/download](https://opencode.ai/download).
+
+| Platform              | Download                           |
+| --------------------- | ---------------------------------- |
+| macOS (Apple Silicon) | `opencode-desktop-mac-arm64.dmg`   |
+| macOS (Intel)         | `opencode-desktop-mac-x64.dmg`     |
+| Windows               | `opencode-desktop-windows-x64.exe` |
+| Linux                 | `.deb`, `.rpm`, or `.AppImage`     |
 
 ```bash
-echo 'export OPENAI_API_KEY=your-key' >> ~/.bashrc
-echo 'export AZENT_BASE_URL=https://your-api-endpoint.com/v1' >> ~/.bashrc
-source ~/.bashrc
+# macOS (Homebrew)
+brew install --cask opencode-desktop
+# Windows (Scoop)
+scoop bucket add extras; scoop install extras/opencode-desktop
 ```
 
-> 如果你用 zsh，将 `~/.bashrc` 替换为 `~/.zshrc`。
+#### Installation Directory
 
-**Windows（PowerShell）**：
+The install script respects the following priority order for the installation path:
 
-```powershell
-[System.Environment]::SetEnvironmentVariable('OPENAI_API_KEY', 'your-key', 'User')
-[System.Environment]::SetEnvironmentVariable('AZENT_BASE_URL', 'https://your-api-endpoint.com/v1', 'User')
-```
-
-重启终端后生效。
-
-**使用 .env 文件**：
-
-在项目根目录创建 `.env`：
-
-```env
-OPENAI_API_KEY=your-key
-AZENT_BASE_URL=https://your-api-endpoint.com/v1
-```
-
-## 使用
+1. `$OPENCODE_INSTALL_DIR` - Custom installation directory
+2. `$XDG_BIN_DIR` - XDG Base Directory Specification compliant path
+3. `$HOME/bin` - Standard user binary directory (if it exists or can be created)
+4. `$HOME/.opencode/bin` - Default fallback
 
 ```bash
-cd my-project
-azent
+# Examples
+OPENCODE_INSTALL_DIR=/usr/local/bin curl -fsSL https://opencode.ai/install | bash
+XDG_BIN_DIR=$HOME/.local/bin curl -fsSL https://opencode.ai/install | bash
 ```
 
-启动后输入任务即可。默认使用 `code-review` 流程（分析→实现→审查→测试）。
+### Agents
 
-### TUI 命令
+OpenCode includes two built-in agents you can switch between with the `Tab` key.
 
-| 命令 | 功能 |
-|---|---|
-| `/help` | 查看命令 |
-| `/loops` | 查看可用流程 |
-| `/exit` | 退出 |
-| `Ctrl+C` | 强制退出 |
-| 直接输入文字 | 执行任务 |
+- **build** - Default, full-access agent for development work
+- **plan** - Read-only agent for analysis and code exploration
+  - Denies file edits by default
+  - Asks permission before running bash commands
+  - Ideal for exploring unfamiliar codebases or planning changes
 
-## 配置
+Also included is a **general** subagent for complex searches and multistep tasks.
+This is used internally and can be invoked using `@general` in messages.
 
-### 配置优先级（高→低）
+Learn more about [agents](https://opencode.ai/docs/agents).
 
-```
-1. 项目   .azent/config/agents.yaml    项目级覆盖
-2. 全局   ~/.azent/agents.yaml          用户级覆盖
-3. 内置   Azent/configs/agents.yaml      开箱即用
-```
+### Documentation
 
-**开箱即用**：不需要任何配置文件，内置默认配置已包含 5 个 Agent + 5 个 Loop 模板。只需设环境变量。
+For more info on how to configure OpenCode, [**head over to our docs**](https://opencode.ai/docs).
 
-### 自定义模型
+### Contributing
 
-在项目下创建 `.azent/config/agents.yaml`：
+If you're interested in contributing to OpenCode, please read our [contributing docs](./CONTRIBUTING.md) before submitting a pull request.
 
-```yaml
-agents:
-  coder:
-    id: coder
-    name: Coder
-    instructions: You are a code generator.
-    model:
-      id: openai/gpt-4.1
-      url: $AZENT_BASE_URL
-      apiKey: $OPENAI_API_KEY
-    maxSteps: 10
+### Building on OpenCode
 
-# 只写要覆盖的 agent，其余用内置默认
-```
+If you are working on a project that's related to OpenCode and is using "opencode" as part of its name, for example "opencode-dashboard" or "opencode-mobile", please add a note to your README to clarify that it is not built by the OpenCode team and is not affiliated with us in any way.
 
-> `$VAR` 语法：`$` 开头表示引用环境变量，不明文写入配置。
+---
 
-### 可用的模型接入方式
-
-| 方式 | model 配置 |
-|---|---|
-| OpenAI 兼容 API | `{ id: "openai/gpt-4.1", url: "$AZENT_BASE_URL", apiKey: "$OPENAI_API_KEY" }` |
-| 直连官方 | `"openai/gpt-4.1"` (自动读 `OPENAI_API_KEY` 环境变量) |
-| 本地 Ollama | `{ id: "openai/qwen2.5", url: "http://localhost:11434/v1", apiKey: "ollama" }` |
-
-## 内置 Agent
-
-| Agent | 模型 | 职责 |
-|---|---|---|
-| architect | Claude Sonnet 4.5 | 需求分析、架构设计 |
-| coder | Claude Sonnet 4.5 | 编码实现 |
-| reviewer | Claude Sonnet 4.5 | 代码审查 |
-| tester | GPT-4.1-mini | 测试编写与运行 |
-| debugger | Claude Sonnet 4.5 | 根因诊断与修复 |
-
-## 内置 Loop 模板
-
-| 模板 | 环节 | 适用场景 |
-|---|---|---|
-| code-review | 分析→实现→审查→测试 | 日常开发 |
-| new-feature | 设计→实现→审查→测试 | 新功能 |
-| quick-fix | 诊断→修复→验证 | 快速修复 |
-| debug | 复现→诊断→修复→审查→验证 | 深度排障 |
-| refactor | 评估→重构→验证→审查 | 重构优化 |
-
-## 记忆系统
-
-运行后自动在项目下创建 `.azent/` 目录：
-
-```
-.azent/
-├── mastra.db      会话记忆 (libSQL)
-└── memory/        经验向量库 (fastembed)
-```
-
-这些文件已在 `.gitignore` 中，不会提交到 git。
-
-## MCP 工具集成
-
-在 agent 配置中添加 MCP 服务器：
-
-```yaml
-agents:
-  coder:
-    mcpServers:
-      filesystem:
-        command: npx
-        args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
-      github:
-        url: http://localhost:3000/mcp
-```
-
-## 权限控制
-
-```yaml
-agents:
-  coder:
-    requireApproval: true                          # 所有工具都需确认
-    # 或
-    requireApproval: ["filesystem_write", "bash"]  # 仅这些工具需确认
-```
-
-## 开发
-
-```bash
-git clone https://github.com/VikingShow/Azent.git
-cd Azent && bun install
-
-# 运行测试
-bun test
-
-# 类型检查
-bun x tsc --noEmit
-
-# 开发模式运行
-bun run src/index.ts
-```
-
-## License
-
-MIT
+**Join our community** [Discord](https://discord.gg/opencode) | [X.com](https://x.com/opencode)
