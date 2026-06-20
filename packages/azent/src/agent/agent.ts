@@ -14,6 +14,7 @@ import PROMPT_COMPACTION from "./prompt/compaction.txt"
 import PROMPT_EXPLORE from "./prompt/explore.txt"
 import PROMPT_SUMMARY from "./prompt/summary.txt"
 import PROMPT_TITLE from "./prompt/title.txt"
+import PROMPT_SUPERVISOR from "../session/prompt/supervisor.txt"
 import { Permission } from "@/permission"
 import { mergeDeep, pipe, sortBy, values } from "remeda"
 import { Global } from "@azent/core/global"
@@ -193,6 +194,7 @@ export const layer = Layer.effect(
               }),
               user,
             ),
+            prompt: PROMPT_SUPERVISOR,
             mode: "primary",
             native: true,
           },
