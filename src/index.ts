@@ -7,7 +7,13 @@ import { createLoopEngine } from './orchestrator/loop.js'
 import { createExperienceStore } from './memory/experience.js'
 import { AzentApp } from './tui/app.js'
 
-const VERSION = '0.1.4'
+const VERSION = '0.1.5'
+
+if (typeof Bun === 'undefined') {
+  console.error('Azent requires Bun. Install with: bun add -g @sowrjam/azent')
+  console.error('Or run with: bunx @sowrjam/azent')
+  process.exit(1)
+}
 
 async function checkUpdate() {
   try {

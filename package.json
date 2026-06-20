@@ -1,6 +1,6 @@
 {
   "name": "@sowrjam/azent",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "type": "module",
   "description": "Agent Loop orchestrator with feedforward-feedback loops, built on Mastra + Ink TUI",
   "license": "MIT",
@@ -25,9 +25,10 @@
     "cli"
   ],
   "bin": {
-    "azent": "src/index.ts"
+    "azent": "bin/azent.cjs"
   },
   "files": [
+    "bin/",
     "src/",
     "configs/",
     "README.md",
