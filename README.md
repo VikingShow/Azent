@@ -11,24 +11,24 @@ Agent Loop 编排引擎 — 通过前馈-反馈 Loop 驱动多 Agent 协作完�
                 └─ debugger (调试排障)
 ```
 
+[English](./README.en.md)
+
 ## 安装
 
-### 方式 1：bunx（零安装，推荐）
+> 需要 [Bun](https://bun.sh) >= 1.1.0
+
+### 方式 1：npm / bunx（零安装，推荐）
 
 ```bash
 cd your-project
-export OPENAI_API_KEY=your-key
-export AZENT_BASE_URL=https://your-relay/v1
-bunx @sowrjam/azent
+npx @sowrjam/azent
 ```
 
 ### 方式 2：全局安装
 
 ```bash
-bun add -g @sowrjam/azent
+npm i -g @sowrjam/azent
 cd your-project
-export OPENAI_API_KEY=your-key
-export AZENT_BASE_URL=https://your-relay/v1
 azent
 ```
 
@@ -42,39 +42,63 @@ bun link
 
 # 以后在任意项目下
 cd your-project
-export OPENAI_API_KEY=your-key
-export AZENT_BASE_URL=https://your-relay/v1
 azent
 ```
 
-> 需要 [Bun](https://bun.sh) >= 1.1.0
+## 环境变量
+
+Azent 需要两个环境变量来连接 LLM API：
+
+| 变量 | 必填 | 说明 |
+|---|---|---|
+| `OPENAI_API_KEY` | 是 | API 密钥 |
+| `AZENT_BASE_URL` | 是 | API 端点地址 |
+
+### 临时设置（当前终端有效）
+
+```bash
+export OPENAI_API_KEY=your-key
+export AZENT_BASE_URL=https://your-api-endpoint.com/v1
+```
+
+### 永久设置
+
+**Linux / macOS（bash/zsh）**：
+
+```bash
+echo 'export OPENAI_API_KEY=your-key' >> ~/.bashrc
+echo 'export AZENT_BASE_URL=https://your-api-endpoint.com/v1' >> ~/.bashrc
+source ~/.bashrc
+```
+
+> 如果你用 zsh，将 `~/.bashrc` 替换为 `~/.zshrc`。
+
+**Windows（PowerShell）**：
+
+```powershell
+[System.Environment]::SetEnvironmentVariable('OPENAI_API_KEY', 'your-key', 'User')
+[System.Environment]::SetEnvironmentVariable('AZENT_BASE_URL', 'https://your-api-endpoint.com/v1', 'User')
+```
+
+重启终端后生效。
+
+**使用 .env 文件**：
+
+在项目根目录创建 `.env`：
+
+```env
+OPENAI_API_KEY=your-key
+AZENT_BASE_URL=https://your-api-endpoint.com/v1
+```
 
 ## 使用
 
 ```bash
-# 进入你的项目目录
 cd my-project
-
-# 设环境变量
-export OPENAI_API_KEY=your-relay-key
-
-# 启动
 azent
 ```
 
 启动后输入任务即可。默认使用 `code-review` 流程（分析→实现→审查→测试）。
-
-### 环境变量
-
-| 变量 | 必填 | 说明 |
-|---|---|---|
-| `OPENAI_API_KEY` | 是 | 中转站/API 的密钥 |
-| `AZENT_BASE_URL` | 是 | 中转站地址（默认配置引用此变量） |
-
-```bash
-export OPENAI_API_KEY=your-key
-export AZENT_BASE_URL=https://yunwu.ai/v1
-```
 
 ### TUI 命令
 
@@ -96,11 +120,9 @@ export AZENT_BASE_URL=https://yunwu.ai/v1
 3. 内置   Azent/configs/agents.yaml      开箱即用
 ```
 
-**开箱即用**：不需要任何配置文件，内置默认配置已包含 5 个 Agent + 5 个 Loop 模板。只需设 `OPENAI_API_KEY` 环境变量。
+**开箱即用**：不需要任何配置文件，内置默认配置已包含 5 个 Agent + 5 个 Loop 模板。只需设环境变量。
 
 ### 自定义模型
-
-内置配置使用 yunwu.ai 中转站。换成你自己的：
 
 在项目下创建 `.azent/config/agents.yaml`：
 
@@ -112,21 +134,21 @@ agents:
     instructions: You are a code generator.
     model:
       id: openai/gpt-4.1
-      url: https://your-relay.com/v1
+      url: $AZENT_BASE_URL
       apiKey: $OPENAI_API_KEY
     maxSteps: 10
 
 # 只写要覆盖的 agent，其余用内置默认
 ```
 
-> `apiKey: $OPENAI_API_KEY` — `$` 开头表示引用环境变量，不明文写入配置。
+> `$VAR` 语法：`$` 开头表示引用环境变量，不明文写入配置。
 
 ### 可用的模型接入方式
 
 | 方式 | model 配置 |
 |---|---|
-| 中转站 | `{ id: "openai/gpt-4.1", url: "https://your-relay/v1", apiKey: "$KEY" }` |
-| 直连官方 | `"openai/gpt-4.1"` (读 `OPENAI_API_KEY` 环境变量) |
+| OpenAI 兼容 API | `{ id: "openai/gpt-4.1", url: "$AZENT_BASE_URL", apiKey: "$OPENAI_API_KEY" }` |
+| 直连官方 | `"openai/gpt-4.1"` (自动读 `OPENAI_API_KEY` 环境变量) |
 | 本地 Ollama | `{ id: "openai/qwen2.5", url: "http://localhost:11434/v1", apiKey: "ollama" }` |
 
 ## 内置 Agent

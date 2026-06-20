@@ -2,27 +2,99 @@
 
 ## 1. 安装
 
+### npm 安装（推荐）
+
 ```bash
-git clone -b tui https://github.com/VikingShow/Azent.git
+npm i -g @sowrjam/azent
+```
+
+或零安装直接运行：
+
+```bash
+npx @sowrjam/azent
+```
+
+### 从源码安装
+
+```bash
+git clone https://github.com/VikingShow/Azent.git
 cd Azent
 bun install
+bun link
 ```
 
-## 2. 配置
+> 需要 [Bun](https://bun.sh) >= 1.1.0
 
-### 2.1 创建项目配置目录
+## 2. 环境变量
 
-在你的**目标项目**根目录下创建 `.azent/config/`：
+### 永久设置（推荐）
+
+**Linux / macOS**：
 
 ```bash
-mkdir -p .azent/config
+echo 'export OPENAI_API_KEY=your-key' >> ~/.bashrc
+echo 'export AZENT_BASE_URL=https://your-api-endpoint.com/v1' >> ~/.bashrc
+source ~/.bashrc
 ```
 
-### 2.2 配置 Agent（`.azent/config/agents.yaml`）
+> 如果你用 zsh，将 `~/.bashrc` 替换为 `~/.zshrc`。
 
-#### 方式 A：使用中转站（API 代理）
+**Windows (PowerShell)**：
 
-如果你用中转站（如 one-api、new-api 等 OpenAI 兼容代理），配置 `url` 和 `apiKey`：
+```powershell
+[System.Environment]::SetEnvironmentVariable('OPENAI_API_KEY', 'your-key', 'User')
+[System.Environment]::SetEnvironmentVariable('AZENT_BASE_URL', 'https://your-api-endpoint.com/v1', 'User')
+```
+
+重启终端后生效。
+
+### 临时设置
+
+```bash
+export OPENAI_API_KEY=your-key
+export AZENT_BASE_URL=https://your-api-endpoint.com/v1
+```
+
+### 使用 .env 文件
+
+在项目根目录创建 `.env`：
+
+```env
+OPENAI_API_KEY=your-key
+AZENT_BASE_URL=https://your-api-endpoint.com/v1
+```
+
+## 3. 运行
+
+```bash
+cd my-project
+azent
+```
+
+启动 TUI 后：
+- 输入任务描述 → 自动选择 `code-review` loop 执行
+- `/loops` → 查看可用 loop 模板
+- `/help` → 查看命令
+- `/exit` → 退出
+- `Ctrl+C` → 强制退出
+
+## 4. 配置
+
+### 配置优先级（高→低）
+
+```
+1. 项目   .azent/config/agents.yaml    项目级覆盖
+2. 全局   ~/.azent/agents.yaml          用户级覆盖
+3. 内置   Azent/configs/agents.yaml      开箱即用
+```
+
+**开箱即用**：不需要任何配置文件。只需设环境变量。
+
+### 自定义模型
+
+在项目下创建 `.azent/config/agents.yaml`：
+
+#### OpenAI 兼容 API
 
 ```yaml
 agents:
@@ -31,52 +103,34 @@ agents:
     name: Coder
     instructions: You are a code generator.
     model:
-      id: openai/gpt-4.1           # provider/model 格式
-      url: https://your-relay.com/v1  # 中转站地址
-      apiKey: $OPENAI_API_KEY       # $ 开头引用环境变量
+      id: openai/gpt-4.1
+      url: $AZENT_BASE_URL
+      apiKey: $OPENAI_API_KEY
     maxSteps: 10
-    memory: true
-
-global:
-  defaultModel:
-    id: openai/gpt-4.1
-    url: https://your-relay.com/v1
-    apiKey: $OPENAI_API_KEY
 ```
 
-#### 方式 B：直连官方 API
+> `$VAR` 语法：`$` 开头引用环境变量，不明文写入配置。
 
-不填 `url`，只设环境变量即可（Mastra 自动读取 `OPENAI_API_KEY` 等）：
+#### 直连官方 API
 
 ```yaml
 agents:
   coder:
-    id: coder
-    name: Coder
-    instructions: You are a code generator.
-    model: openai/gpt-4.1    # 字符串形式，用官方端点
-    maxSteps: 10
+    model: openai/gpt-4.1    # 字符串形式，自动读 OPENAI_API_KEY
 ```
 
-```bash
-export OPENAI_API_KEY=sk-xxx
-```
-
-#### 方式 C：本地模型（Ollama）
+#### 本地 Ollama
 
 ```yaml
 agents:
   coder:
-    id: coder
-    name: Coder
-    instructions: You are a code generator.
     model:
-      id: openai/qwen2.5      # Ollama 提供 OpenAI 兼容接口
+      id: openai/qwen2.5
       url: http://localhost:11434/v1
-      apiKey: ollama            # Ollama 不需要真实 key，随意填
+      apiKey: ollama
 ```
 
-### 2.3 配置 Loop 模板（`.azent/config/loops.yaml`）
+### 配置 Loop 模板（`.azent/config/loops.yaml`）
 
 ```yaml
 loops:
@@ -98,44 +152,7 @@ loops:
         agent: reviewer
 ```
 
-### 2.4 环境变量
-
-```bash
-# .env 文件或 shell 导出
-OPENAI_API_KEY=sk-your-key          # 中转站 API Key
-# OPENAI_BASE_URL 可选，但推荐在 YAML 里配 url
-```
-
-`apiKey: $OPENAI_API_KEY` 语法：`$` 开头表示引用环境变量名，不会明文写入配置文件。
-
-### 2.5 全局配置（可选，`~/.azent/config.yaml`）
-
-跨项目共享的默认配置：
-
-```yaml
-defaultModel:
-  id: openai/gpt-4.1
-  url: https://your-relay.com/v1
-  apiKey: $OPENAI_API_KEY
-language: zh-CN
-```
-
-项目级 `.azent/config/agents.yaml` 会覆盖全局配置。
-
-## 3. 运行
-
-```bash
-bun run src/index.ts
-```
-
-启动 TUI 后：
-- 输入任务描述 → 自动选择 `code-review` loop 执行
-- `/loops` → 查看可用 loop 模板
-- `/help` → 查看命令
-- `/exit` → 退出
-- `Ctrl+C` → 强制退出
-
-## 4. 记忆系统
+## 5. 记忆系统
 
 运行后自动创建：
 - `.azent/mastra.db` — 会话记忆（libSQL）
@@ -143,7 +160,7 @@ bun run src/index.ts
 
 这些文件已在 `.gitignore` 中，不会提交到 git。
 
-## 5. 权限控制
+## 6. 权限控制
 
 在 `agents.yaml` 中配置：
 
@@ -157,7 +174,7 @@ agents:
 
 执行到需要审批的工具时，TUI 会暂停并显示审批提示。
 
-## 6. MCP 工具集成
+## 7. MCP 工具集成
 
 在 agent 配置中添加 MCP 服务器：
 
@@ -173,22 +190,3 @@ agents:
 ```
 
 Agent 启动时自动发现并加载所有 MCP 工具。
-
-## 7. 快速验证
-
-```bash
-# 1. 在项目根目录创建配置
-mkdir -p .azent/config
-
-# 2. 复制示例配置并修改
-cp /path/to/Azent/configs/agents.yaml .azent/config/
-cp /path/to/Azent/configs/loops.yaml .azent/config/
-# 编辑 agents.yaml，填入你的中转站 url 和 apiKey
-
-# 3. 设置环境变量
-export OPENAI_API_KEY=your-relay-key
-
-# 4. 运行
-cd /path/to/Azent
-bun run src/index.ts
-```
