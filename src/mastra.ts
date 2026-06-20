@@ -3,7 +3,7 @@ import { Mastra } from '@mastra/core'
 import { Memory } from '@mastra/memory'
 import { LibSQLStore, LibSQLVector } from '@mastra/libsql'
 import { MCPClient } from '@mastra/mcp'
-import { fastembed } from '@mastra/fastembed'
+import { getEmbedder } from './memory/embedder.js'
 import { join, resolve } from 'path'
 import { existsSync, mkdirSync } from 'fs'
 import type { AgentConfig as AzentAgentConfig, AzentConfig, ModelConfig } from './config/types.js'
@@ -42,16 +42,15 @@ export async function createMastraInstance(projectDir: string = process.cwd()): 
     url: `file:${dbPath}`,
   })
 
-  const embedder = fastembed
+  const embedder = await getEmbedder()
 
-  const memory = new Memory({
+  const memoryOpts: Record<string, unknown> = {
     storage,
     vector,
-    embedder,
-    options: {
-      lastMessages: 20,
-    },
-  })
+    options: { lastMessages: 20 },
+  }
+  if (embedder) memoryOpts.embedder = embedder
+  const memory = new Memory(memoryOpts as any)
 
   const mcpClients: MCPClient[] = []
   const allMcpServers: Record<string, { command?: string; args?: string[]; url?: string; env?: Record<string, string> }> = {}

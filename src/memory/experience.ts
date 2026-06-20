@@ -1,7 +1,7 @@
 import type { MastraVector } from '@mastra/core/vector'
-import { fastembed } from '@mastra/fastembed'
 import { randomUUID } from 'crypto'
 import type { ExperienceEntry } from '../config/types.js'
+import { getEmbedder } from './embedder.js'
 
 const EXPERIENCE_INDEX = 'azent_experience_memory'
 
@@ -15,23 +15,23 @@ export interface ExperienceStore {
 export async function createExperienceStore(
   vector: MastraVector,
 ): Promise<ExperienceStore> {
-  const embedder = fastembed
-  const dimResult = await embedder.doEmbed({ values: ['init'] })
-  const dimension = dimResult.embeddings[0].length
-
-  try {
-    await vector.createIndex({
-      indexName: EXPERIENCE_INDEX,
-      dimension,
-      metric: 'cosine',
-    })
-  } catch {
-    // Index already exists
+  const embedder = await getEmbedder()
+  if (embedder) {
+    const dimResult = await embedder.doEmbed({ values: ['init'] })
+    const dimension = dimResult.embeddings[0].length
+    try {
+      await vector.createIndex({
+        indexName: EXPERIENCE_INDEX,
+        dimension,
+        metric: 'cosine',
+      })
+    } catch { /* exists */ }
   }
 
   return {
     record: async (entry) => {
       const id = randomUUID()
+      if (!embedder) return id
       const now = Date.now()
       const searchText = `${entry.feedforward} | ${entry.problem || ''} | ${entry.solution || ''}`
       const embedding = (await embedder.doEmbed({ values: [searchText] })).embeddings[0]
@@ -54,6 +54,7 @@ export async function createExperienceStore(
     },
 
     search: async (query, topK = 5) => {
+      if (!embedder) return []
       const embedding = (await embedder.doEmbed({ values: [query] })).embeddings[0]
       const results = await vector.query({
         indexName: EXPERIENCE_INDEX,
@@ -76,7 +77,9 @@ export async function createExperienceStore(
     getById: async (id) => {
       const stats = await vector.describeIndex({ indexName: EXPERIENCE_INDEX })
       if (stats.count === 0) return null
-      const dummyResult = await fastembed.doEmbed({ values: ['placeholder'] })
+      const embedder = await getEmbedder()
+      if (!embedder) return null
+      const dummyResult = await embedder.doEmbed({ values: ['placeholder'] })
       const results = await vector.query({
         indexName: EXPERIENCE_INDEX,
         queryVector: dummyResult.embeddings[0],

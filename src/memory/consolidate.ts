@@ -1,8 +1,8 @@
 import type { MastraVector } from '@mastra/core/vector'
-import { fastembed } from '@mastra/fastembed'
 import type { ExperienceEntry } from '../config/types.js'
 import type { ExperienceStore } from './experience.js'
 import type { ConsolidationResult } from '../config/types.js'
+import { getEmbedder } from './embedder.js'
 
 const SIMILARITY_THRESHOLD = 0.85
 
@@ -24,7 +24,12 @@ async function consolidateExperiences(
   store: ExperienceStore,
   vector: MastraVector,
 ): Promise<ConsolidationResult> {
-  const embedder = fastembed
+  const embedder = await getEmbedder()
+  if (!embedder) {
+    const count = await store.count()
+    return { merged: 0, deleted: 0, kept: count }
+  }
+
   const count = await store.count()
   if (count < 2) {
     return { merged: 0, deleted: 0, kept: count }
@@ -67,14 +72,9 @@ async function consolidateExperiences(
   let deletedCount = 0
   for (const id of toDelete) {
     try {
-      await vector.deleteVector({
-        indexName: 'azent_experience_memory',
-        id,
-      })
+      await vector.deleteVector({ indexName: 'azent_experience_memory', id })
       deletedCount++
-    } catch {
-      // Already deleted
-    }
+    } catch { /* already deleted */ }
   }
 
   const mergedCount = toDelete.length > 0 ? allEntries.length - merged.length - 0 : 0

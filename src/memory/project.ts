@@ -1,7 +1,7 @@
 import type { MastraVector } from '@mastra/core/vector'
-import { fastembed } from '@mastra/fastembed'
 import { randomUUID } from 'crypto'
 import type { ProjectMemoryEntry } from '../config/types.js'
+import { getEmbedder } from './embedder.js'
 
 const PROJECT_INDEX = 'azent_project_memory'
 const STALE_TTL_MS = 30 * 24 * 60 * 60 * 1000
@@ -19,23 +19,23 @@ export interface ProjectMemoryStore {
 export async function createProjectMemory(
   vector: MastraVector,
 ): Promise<ProjectMemoryStore> {
-  const embedder = fastembed
-  const dimResult = await embedder.doEmbed({ values: ['init'] })
-  const dimension = dimResult.embeddings[0].length
-
-  try {
-    await vector.createIndex({
-      indexName: PROJECT_INDEX,
-      dimension,
-      metric: 'cosine',
-    })
-  } catch {
-    // Index already exists
+  const embedder = await getEmbedder()
+  if (embedder) {
+    const dimResult = await embedder.doEmbed({ values: ['init'] })
+    const dimension = dimResult.embeddings[0].length
+    try {
+      await vector.createIndex({
+        indexName: PROJECT_INDEX,
+        dimension,
+        metric: 'cosine',
+      })
+    } catch { /* exists */ }
   }
 
   return {
     add: async (content, category, source = 'manual') => {
       const id = randomUUID()
+      if (!embedder) return id
       const now = Date.now()
       const embedding = (await embedder.doEmbed({ values: [content] })).embeddings[0]
       await vector.upsert({
@@ -52,6 +52,7 @@ export async function createProjectMemory(
     },
 
     search: async (query, topK = 5) => {
+      if (!embedder) return []
       const embedding = (await embedder.doEmbed({ values: [query] })).embeddings[0]
       const results = await vector.query({
         indexName: PROJECT_INDEX,
@@ -109,10 +110,7 @@ export async function createProjectMemory(
     },
 
     remove: async (id) => {
-      await vector.deleteVector({
-        indexName: PROJECT_INDEX,
-        id,
-      })
+      await vector.deleteVector({ indexName: PROJECT_INDEX, id })
     },
 
     refresh: async () => {
@@ -158,7 +156,9 @@ async function markVectorStale(
 let cachedDummyEmbedding: number[] | null = null
 async function getDummyEmbedding(): Promise<number[]> {
   if (cachedDummyEmbedding) return cachedDummyEmbedding
-  const result = await fastembed.doEmbed({ values: ['placeholder'] })
+  const embedder = await getEmbedder()
+  if (!embedder) return []
+  const result = await embedder.doEmbed({ values: ['placeholder'] })
   cachedDummyEmbedding = result.embeddings[0]
   return cachedDummyEmbedding
 }
