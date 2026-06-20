@@ -1,6 +1,6 @@
 {
   "name": "@sowrjam/azent",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "type": "module",
   "description": "Agent Loop orchestrator with feedforward-feedback loops, built on Mastra + Ink TUI",
   "license": "MIT",
