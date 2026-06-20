@@ -1,0 +1,11 @@
+tests/
+azent-bin
+.tmp-*
+*.db
+*.db-*
+.azent/
+dist/
+PLAN.md
+AGENTS.md
+bunfig.toml
+tsconfig.json

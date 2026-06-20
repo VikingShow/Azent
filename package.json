@@ -2,9 +2,17 @@
   "name": "azent",
   "version": "0.1.0",
   "type": "module",
+  "description": "Agent Loop orchestrator with feedforward-feedback loops, built on Mastra + Ink TUI",
+  "license": "MIT",
   "bin": {
     "azent": "src/index.ts"
   },
+  "files": [
+    "src/",
+    "configs/",
+    "README.md",
+    "USAGE.md"
+  ],
   "scripts": {
     "dev": "bun run src/index.ts",
     "test": "bun test",
@@ -12,11 +20,12 @@
   },
   "dependencies": {
     "@mastra/core": "latest",
-    "@mastra/memory": "latest",
-    "@mastra/mcp": "latest",
-    "@mastra/libsql": "latest",
     "@mastra/fastembed": "latest",
+    "@mastra/libsql": "latest",
+    "@mastra/mcp": "latest",
+    "@mastra/memory": "latest",
     "ink": "^5.0.0",
+    "react-devtools-core": "^7.0.1",
     "yaml": "^2.5.0",
     "zod": "^3.23.0"
   },
@@ -27,5 +36,8 @@
   },
   "trustedDependencies": [
     "onnxruntime-node"
-  ]
+  ],
+  "engines": {
+    "bun": ">=1.1.0"
+  }
 }
