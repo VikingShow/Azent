@@ -1,5 +1,5 @@
-import { SkillV2 } from "@opencode-ai/core/skill"
-import { Location } from "@opencode-ai/core/location"
+import { SkillV2 } from "@azent/core/skill"
+import { Location } from "@azent/core/location"
 import { Schema } from "effect"
 import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
 import { LocationQuery, locationQueryOpenApi, LocationMiddleware } from "./location"
