@@ -2,6 +2,9 @@
   "name": "azent",
   "version": "0.1.0",
   "type": "module",
+  "bin": {
+    "azent": "src/index.ts"
+  },
   "scripts": {
     "dev": "bun run src/index.ts",
     "test": "bun test",
