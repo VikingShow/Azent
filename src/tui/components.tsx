@@ -4,10 +4,21 @@ import type { LoopPhaseResult, AzentConfig } from '../config/types.js'
 
 const COSMIC = '#3d5a80'
 const HUE_STEP = 2
-const SEG_ANGLE = 360 / 8
+const SEG_ANGLE = 360 / 16
 
-const TOP_SEGS = ['╔══════', '══════', '══════', '══════', '═══════', '═══════', '═══════', '══════╗']
-const BOT_SEGS = ['╚══════', '══════', '══════', '══════', '═══════', '═══════', '═══════', '══════╝']
+const TOP_SEGS = [
+  '╔═══', '═══', '═══', '════',
+  '═══', '═══', '═══', '════',
+  '═══', '═══', '═══', '════',
+  '═══', '═══', '═══', '═══╗',
+]
+
+const BOT_SEGS = [
+  '╚═══', '═══', '═══', '════',
+  '═══', '═══', '═══', '════',
+  '═══', '═══', '═══', '════',
+  '═══', '═══', '═══', '═══╝',
+]
 
 const A = ['  ███  ', ' █   █ ', '█     █', '███████', '█     █', '█     █']
 const Z = ['███████', '     █ ', '    █  ', '   █   ', '  █    ', '███████']
@@ -58,12 +69,12 @@ export function SplashHeader({
         <Box key={row}>
           <Text color={rc(0, frame)}>║ </Text>
           <Text>   </Text>
-          <Text color={rc(1, frame)}>{A[row]}  </Text>
+          <Text color={rc(2, frame)}>{A[row]}  </Text>
           <Text color={COSMIC}>{Z[row]}  </Text>
           <Text color={COSMIC}>{E[row]}  </Text>
           <Text color={COSMIC}>{N[row]}  </Text>
-          <Text color={rc(6, frame)}>{T[row]}   </Text>
-          <Text color={rc(7, frame)}> ║</Text>
+          <Text color={rc(12, frame)}>{T[row]}   </Text>
+          <Text color={rc(15, frame)}> ║</Text>
         </Box>
       ))}
 
@@ -72,7 +83,7 @@ export function SplashHeader({
         <Text color={rc(0, frame)}>║ </Text>
         <Text>   </Text>
         <Text dimColor>{info.padEnd(46)}</Text>
-        <Text color={rc(7, frame)}> ║</Text>
+        <Text color={rc(15, frame)}> ║</Text>
       </Box>
 
       {/* bottom border */}
@@ -99,21 +110,39 @@ export function MessageList({ messages }: { messages: Array<{ role: 'user' | 'as
 
 export function PhaseStatus({ phases }: { phases: LoopPhaseResult[] }) {
   return (
-    <Box flexDirection="column" marginY={1}>
+    <Box flexDirection="column" marginY={1} gap={1}>
       <Text bold color="cyan">Loop Phases:</Text>
       {phases.map((phase, i) => (
-        <Box key={i} flexDirection="row">
-          <Text color={phase.passed ? 'green' : 'red'}>
-            {phase.passed ? '\u2713' : '\u2717'}
-          </Text>
-          <Text> {phase.phaseId} ({phase.agentId})</Text>
-          {phase.retries > 0 && (
-            <Text dimColor> retries: {phase.retries}</Text>
+        <Box key={i} flexDirection="column" marginLeft={0}>
+          <Box flexDirection="row">
+            <Text color={phase.passed ? 'green' : 'red'}>
+              {phase.passed ? '\u2713' : '\u2717'}
+            </Text>
+            <Text bold> {phase.phaseId}</Text>
+            <Text dimColor> ({phase.agentId})</Text>
+            {phase.retries > 0 && (
+              <Text dimColor> retries: {phase.retries}</Text>
+            )}
+          </Box>
+          {phase.output && (
+            <Box marginLeft={3} marginTop={0}>
+              <Text dimColor>{truncate(phase.output, 200)}</Text>
+            </Box>
+          )}
+          {phase.feedback && !phase.passed && (
+            <Box marginLeft={3}>
+              <Text color="red">{truncate(phase.feedback, 200)}</Text>
+            </Box>
           )}
         </Box>
       ))}
     </Box>
   )
+}
+
+function truncate(s: string, max: number): string {
+  if (s.length <= max) return s
+  return s.slice(0, max) + '...'
 }
 
 export function ApprovalPrompt({

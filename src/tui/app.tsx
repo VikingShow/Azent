@@ -13,6 +13,7 @@ import type { LoopEngine } from '../orchestrator/loop.js'
 import type { SupervisorHooks } from '../orchestrator/supervisor.js'
 import type { ExperienceStore } from '../memory/experience.js'
 import type { LoopPhaseResult, ExperienceEntry, AzentConfig } from '../config/types.js'
+import { classifyIntent, chatReply } from './intent.js'
 
 interface AzentAppState {
   running: boolean
@@ -106,13 +107,27 @@ export function AzentApp({
       return
     }
 
+    // Intent: chat or task?
+    if (classifyIntent(text) === 'chat') {
+      setState((s) => ({
+        ...s,
+        messages: [...s.messages, { role: 'user', text }, { role: 'assistant', text: chatReply() }],
+      }))
+      return
+    }
+
     const loopId = state.currentLoopId || 'code-review'
+    const loop = config.loops[loopId]
+    const phaseNames = loop ? loop.phases.map(p => p.id).join(' → ') : ''
 
     setState((s) => ({
       ...s,
       running: true,
       status: `Running loop "${loopId}"...`,
-      messages: [...s.messages, { role: 'user', text }],
+      messages: [...s.messages,
+        { role: 'user', text },
+        { role: 'system', text: `Selected loop: ${loopId} (${phaseNames})` },
+      ],
       phases: [],
       error: null,
     }))
