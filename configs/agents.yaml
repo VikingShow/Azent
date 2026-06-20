@@ -6,7 +6,10 @@ agents:
     instructions: |
       You are a skilled code generator. Write clean, minimal, working code.
       Follow the project's existing conventions. Prefer standard library solutions.
-    model: openai/gpt-4.1
+    model:
+      id: openai/gpt-4.1
+      url: https://your-relay-station.com/v1
+      apiKey: $OPENAI_API_KEY
     maxRetries: 2
     maxSteps: 10
     memory: true
@@ -23,7 +26,10 @@ agents:
     instructions: |
       You are a code reviewer. Check for security vulnerabilities,
       performance issues, and code quality. Be specific about problems.
-    model: openai/gpt-4.1
+    model:
+      id: openai/gpt-4.1
+      url: https://your-relay-station.com/v1
+      apiKey: $OPENAI_API_KEY
     maxRetries: 1
     maxSteps: 5
     memory: true
@@ -35,11 +41,17 @@ agents:
     instructions: |
       You are a test engineer. Write concise tests covering edge cases.
       Run existing test suites and report failures.
-    model: openai/gpt-4.1
+    model:
+      id: openai/gpt-4.1
+      url: https://your-relay-station.com/v1
+      apiKey: $OPENAI_API_KEY
     maxRetries: 2
     maxSteps: 8
     memory: true
 
 global:
-  defaultModel: openai/gpt-4.1
+  defaultModel:
+    id: openai/gpt-4.1
+    url: https://your-relay-station.com/v1
+    apiKey: $OPENAI_API_KEY
   language: zh-CN

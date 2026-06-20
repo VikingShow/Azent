@@ -11,12 +11,21 @@ export const mcpServerSchema = z.object({
   { message: 'MCP server must have either command or url' },
 )
 
+export const modelConfigSchema = z.object({
+  id: z.string().min(1),
+  url: z.string().optional(),
+  apiKey: z.string().optional(),
+  headers: z.record(z.string()).optional(),
+})
+
+export const modelSchema = z.union([z.string().min(1), modelConfigSchema])
+
 export const agentConfigSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   description: z.string().optional(),
   instructions: z.string().min(1),
-  model: z.string().min(1),
+  model: modelSchema,
   maxRetries: z.number().int().min(0).optional(),
   tools: z.array(z.string()).optional(),
   mcpServers: z.record(mcpServerSchema).optional(),
@@ -39,7 +48,7 @@ export const loopTemplateSchema = z.object({
 })
 
 export const globalConfigSchema = z.object({
-  defaultModel: z.string().optional(),
+  defaultModel: modelSchema.optional(),
   language: z.string().optional(),
   codeStyle: z.record(z.unknown()).optional(),
 })
@@ -56,5 +65,6 @@ export const loopsFileSchema = z.object({
 export type AgentConfigInput = z.infer<typeof agentConfigSchema>
 export type LoopTemplateInput = z.infer<typeof loopTemplateSchema>
 export type McpServerInput = z.infer<typeof mcpServerSchema>
+export type ModelConfigInput = z.infer<typeof modelConfigSchema>
 export type AgentsFileInput = z.infer<typeof agentsFileSchema>
 export type LoopsFileInput = z.infer<typeof loopsFileSchema>

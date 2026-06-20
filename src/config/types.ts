@@ -1,9 +1,16 @@
+export interface ModelConfig {
+  id: string
+  url?: string
+  apiKey?: string
+  headers?: Record<string, string>
+}
+
 export interface AgentConfig {
   id: string
   name: string
   description?: string
   instructions: string
-  model: string
+  model: string | ModelConfig
   maxRetries?: number
   tools?: string[]
   mcpServers?: Record<string, McpServerConfig>
@@ -34,7 +41,7 @@ export interface LoopTemplate {
 }
 
 export interface GlobalConfig {
-  defaultModel?: string
+  defaultModel?: string | ModelConfig
   language?: string
   codeStyle?: Record<string, unknown>
 }

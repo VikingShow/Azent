@@ -1,6 +1,6 @@
 import { Agent } from '@mastra/core/agent'
 import type { Mastra } from '@mastra/core'
-import type { AzentConfig, Feedforward, LoopPhaseResult } from '../config/types.js'
+import type { AzentConfig, Feedforward, LoopPhaseResult, ModelConfig } from '../config/types.js'
 
 export interface SupervisorHooks {
   onPhaseStart?: (phaseId: string, agentId: string, feedforward: Feedforward) => void | Promise<void>
@@ -20,7 +20,10 @@ export function createSupervisor(
   config: AzentConfig,
   options: SupervisorOptions = {},
 ): Agent {
-  const defaultModel = config.global?.defaultModel || 'openai/gpt-4.1'
+  const defaultModelRaw = config.global?.defaultModel || 'openai/gpt-4.1'
+  const defaultModel = typeof defaultModelRaw === 'string'
+    ? defaultModelRaw
+    : resolveModelObject(defaultModelRaw)
 
   const subAgentRecords: Record<string, Agent> = {}
   for (const id of Object.keys(config.agents)) {
@@ -37,7 +40,7 @@ export function createSupervisor(
     name: 'Supervisor',
     description: 'Orchestrates sub-agents to complete tasks via feedforward-feedback loops.',
     instructions,
-    model: defaultModel,
+    model: defaultModel as any,
     agents: subAgentRecords,
     defaultOptions: {
       maxSteps: 50,
@@ -92,4 +95,16 @@ Your responsibilities:
 8. If any phase fails irrecoverably, stop and ask the user for guidance
 
 Always provide clear feedforward when delegating: what to do, what success looks like.`
+}
+
+function resolveModelObject(model: ModelConfig): Record<string, unknown> {
+  const resolved: Record<string, unknown> = { id: model.id }
+  if (model.url) resolved.url = model.url
+  if (model.apiKey) {
+    resolved.apiKey = model.apiKey.startsWith('$')
+      ? process.env[model.apiKey.slice(1)] ?? ''
+      : model.apiKey
+  }
+  if (model.headers) resolved.headers = model.headers
+  return resolved
 }

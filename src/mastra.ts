@@ -6,7 +6,7 @@ import { MCPClient } from '@mastra/mcp'
 import { fastembed } from '@mastra/fastembed'
 import { join, resolve } from 'path'
 import { existsSync, mkdirSync } from 'fs'
-import type { AgentConfig as AzentAgentConfig, AzentConfig } from './config/types.js'
+import type { AgentConfig as AzentAgentConfig, AzentConfig, ModelConfig } from './config/types.js'
 import { loadConfig, validateConfig } from './config/loader.js'
 
 const AZENT_DIR = '.azent'
@@ -112,6 +112,19 @@ export async function createMastraInstance(projectDir: string = process.cwd()): 
   return { mastra, config, mcpClients }
 }
 
+function resolveModel(model: string | ModelConfig): string | Record<string, unknown> {
+  if (typeof model === 'string') return model
+  const resolved: Record<string, unknown> = { id: model.id }
+  if (model.url) resolved.url = model.url
+  if (model.apiKey) {
+    resolved.apiKey = model.apiKey.startsWith('$')
+      ? process.env[model.apiKey.slice(1)] ?? ''
+      : model.apiKey
+  }
+  if (model.headers) resolved.headers = model.headers
+  return resolved
+}
+
 function createAgent(
   id: string,
   config: AzentAgentConfig,
@@ -133,7 +146,7 @@ function createAgent(
     name: config.name,
     description: config.description,
     instructions: config.instructions,
-    model: config.model,
+    model: resolveModel(config.model),
     maxRetries: config.maxRetries ?? 0,
     memory: config.memory !== false ? memory : undefined,
     defaultOptions: {
