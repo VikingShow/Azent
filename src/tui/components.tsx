@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react'
 import { Text, Box, Newline } from 'ink'
 import type { LoopPhaseResult, AzentConfig } from '../config/types.js'
 
-const RAINBOW = ['#ff0000', '#ff8800', '#ffff00', '#00e000', '#0088ff', '#4040ff', '#8800ff', '#ff0088'] as const
 const COSMIC = '#3d5a80'
+const HUE_STEP = 2
+const SEG_ANGLE = 360 / 8
 
 const TOP_SEGS = ['╔══════', '══════', '══════', '══════', '═══════', '═══════', '═══════', '══════╗']
 const BOT_SEGS = ['╚══════', '══════', '══════', '══════', '═══════', '═══════', '═══════', '══════╝']
@@ -14,8 +15,20 @@ const E = ['███████', '█      ', '███████', '█  
 const N = ['█     █', '██    █', '█ █   █', '█  █  █', '█   █ █', '█    ██']
 const T = ['███████', '   █   ', '   █   ', '   █   ', '   █   ', '   █   ']
 
-function rc(idx: number, frame: number) {
-  return RAINBOW[(idx + frame) % 8]
+function hslToHex(h: number, s: number, l: number): string {
+  s /= 100
+  l /= 100
+  const a = s * Math.min(l, 1 - l)
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12
+    const c = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1)
+    return Math.round(255 * c).toString(16).padStart(2, '0')
+  }
+  return `#${f(0)}${f(8)}${f(4)}`
+}
+
+function rc(seg: number, frame: number): string {
+  return hslToHex((frame * HUE_STEP + seg * SEG_ANGLE) % 360, 72, 55)
 }
 
 export function SplashHeader({
@@ -27,7 +40,7 @@ export function SplashHeader({
 }) {
   const [frame, setFrame] = useState(0)
   useEffect(() => {
-    const t = setInterval(() => setFrame(f => (f + 1) % 8), 120)
+    const t = setInterval(() => setFrame(f => f + 1), 120)
     return () => clearInterval(t)
   }, [])
 

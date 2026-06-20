@@ -22,7 +22,7 @@ agents:
 
       Do NOT write implementation code. Your output is consumed by a coder agent.
     model:
-      id: anthropic/claude-sonnet-4-5-20250514
+      id: openai/deepseek-v4-flash
       url: $AZENT_BASE_URL
       apiKey: $OPENAI_API_KEY
     maxRetries: 1
@@ -50,7 +50,7 @@ agents:
       - Summary of what each change does (1 line each)
       - Any deviations from the plan and why
     model:
-      id: anthropic/claude-sonnet-4-5-20250514
+      id: openai/deepseek-v4-flash
       url: $AZENT_BASE_URL
       apiKey: $OPENAI_API_KEY
     maxRetries: 2
@@ -86,7 +86,7 @@ agents:
 
       Be specific. "Improve error handling" is not actionable. "Add try-catch around JSON.parse on line 42 because user input may be malformed" is actionable.
     model:
-      id: anthropic/claude-sonnet-4-5-20250514
+      id: openai/deepseek-v4-flash
       url: $AZENT_BASE_URL
       apiKey: $OPENAI_API_KEY
     maxRetries: 1
@@ -114,7 +114,7 @@ agents:
       - Coverage of changed code (if measurable)
       - Any untested paths and why (e.g., "requires external API mock, skipped")
     model:
-      id: openai/gpt-4.1-mini
+      id: openai/deepseek-v4-flash
       url: $AZENT_BASE_URL
       apiKey: $OPENAI_API_KEY
     maxRetries: 2
@@ -143,7 +143,7 @@ agents:
 
       Never apply a fix you cannot explain. If you cannot find the root cause after thorough investigation, report what you found and where you got stuck.
     model:
-      id: anthropic/claude-sonnet-4-5-20250514
+      id: openai/deepseek-v4-flash
       url: $AZENT_BASE_URL
       apiKey: $OPENAI_API_KEY
     maxRetries: 2
@@ -154,7 +154,7 @@ agents:
 
 global:
   defaultModel:
-    id: anthropic/claude-sonnet-4-5-20250514
+    id: openai/deepseek-v4-flash
     url: $AZENT_BASE_URL
     apiKey: $OPENAI_API_KEY
   language: zh-CN
