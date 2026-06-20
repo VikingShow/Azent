@@ -19,13 +19,13 @@ Agent Loop 编排引擎 — 通过前馈-反馈 Loop 驱动多 Agent 协作完�
 cd your-project
 export OPENAI_API_KEY=your-key
 export AZENT_BASE_URL=https://your-relay/v1
-bunx @vikingshow/azent
+bunx @sowrjam/azent
 ```
 
 ### 方式 2：全局安装
 
 ```bash
-bun add -g @vikingshow/azent
+bun add -g @sowrjam/azent
 cd your-project
 export OPENAI_API_KEY=your-key
 export AZENT_BASE_URL=https://your-relay/v1
