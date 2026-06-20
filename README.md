@@ -61,6 +61,18 @@ azent
 
 启动后输入任务即可。默认使用 `code-review` 流程（分析→实现→审查→测试）。
 
+### 环境变量
+
+| 变量 | 必填 | 说明 |
+|---|---|---|
+| `OPENAI_API_KEY` | 是 | 中转站/API 的密钥 |
+| `AZENT_BASE_URL` | 是 | 中转站地址（默认配置引用此变量） |
+
+```bash
+export OPENAI_API_KEY=your-key
+export AZENT_BASE_URL=https://yunwu.ai/v1
+```
+
 ### TUI 命令
 
 | 命令 | 功能 |

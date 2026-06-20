@@ -115,7 +115,11 @@ export async function createMastraInstance(projectDir: string = process.cwd()): 
 function resolveModel(model: string | ModelConfig): string | Record<string, unknown> {
   if (typeof model === 'string') return model
   const resolved: Record<string, unknown> = { id: model.id }
-  if (model.url) resolved.url = model.url
+  if (model.url) {
+    resolved.url = model.url.startsWith('$')
+      ? process.env[model.url.slice(1)] ?? model.url
+      : model.url
+  }
   if (model.apiKey) {
     resolved.apiKey = model.apiKey.startsWith('$')
       ? process.env[model.apiKey.slice(1)] ?? ''

@@ -99,7 +99,11 @@ Always provide clear feedforward when delegating: what to do, what success looks
 
 function resolveModelObject(model: ModelConfig): Record<string, unknown> {
   const resolved: Record<string, unknown> = { id: model.id }
-  if (model.url) resolved.url = model.url
+  if (model.url) {
+    resolved.url = model.url.startsWith('$')
+      ? process.env[model.url.slice(1)] ?? model.url
+      : model.url
+  }
   if (model.apiKey) {
     resolved.apiKey = model.apiKey.startsWith('$')
       ? process.env[model.apiKey.slice(1)] ?? ''
