@@ -1,13 +1,69 @@
 import React, { useState, useEffect } from 'react'
 import { Text, Box, Newline } from 'ink'
-import type { LoopPhaseResult } from '../config/types.js'
+import type { LoopPhaseResult, AzentConfig } from '../config/types.js'
 
-export function Header({ version }: { version: string }) {
+const RAINBOW = ['#ff0000', '#ff8800', '#ffff00', '#00e000', '#0088ff', '#4040ff', '#8800ff', '#ff0088'] as const
+const COSMIC = '#3d5a80'
+
+const TOP_SEGS = ['╔══════', '══════', '══════', '══════', '═══════', '═══════', '═══════', '══════╗']
+const BOT_SEGS = ['╚══════', '══════', '══════', '══════', '═══════', '═══════', '═══════', '══════╝']
+
+const A = ['  ███  ', ' █   █ ', '█     █', '███████', '█     █', '█     █']
+const Z = ['███████', '     █ ', '    █  ', '   █   ', '  █    ', '███████']
+const E = ['███████', '█      ', '███████', '█      ', '█      ', '███████']
+const N = ['█     █', '██    █', '█ █   █', '█  █  █', '█   █ █', '█    ██']
+const T = ['███████', '   █   ', '   █   ', '   █   ', '   █   ', '   █   ']
+
+function rc(idx: number, frame: number) {
+  return RAINBOW[(idx + frame) % 8]
+}
+
+export function SplashHeader({
+  config,
+  version,
+}: {
+  config: AzentConfig
+  version: string
+}) {
+  const [frame, setFrame] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => setFrame(f => (f + 1) % 8), 120)
+    return () => clearInterval(t)
+  }, [])
+
+  const aCount = Object.keys(config.agents).length
+  const lCount = Object.keys(config.loops).length
+  const info = `v${version} · ${aCount} agents · ${lCount} loop templates`
+
   return (
-    <Box borderStyle="round" borderColor="cyan" paddingX={1}>
-      <Text bold color="cyan">Azent</Text>
-      <Text dimColor> v{version} </Text>
-      <Text dimColor>Agent Loop Engine</Text>
+    <Box flexDirection="column">
+      {/* top border */}
+      <Box>{TOP_SEGS.map((s, i) => <Text key={i} color={rc(i, frame)}>{s}</Text>)}</Box>
+
+      {/* AZENT rows */}
+      {[0, 1, 2, 3, 4, 5].map(row => (
+        <Box key={row}>
+          <Text color={rc(0, frame)}>║ </Text>
+          <Text>   </Text>
+          <Text color={rc(1, frame)}>{A[row]}  </Text>
+          <Text color={COSMIC}>{Z[row]}  </Text>
+          <Text color={COSMIC}>{E[row]}  </Text>
+          <Text color={COSMIC}>{N[row]}  </Text>
+          <Text color={rc(6, frame)}>{T[row]}   </Text>
+          <Text color={rc(7, frame)}> ║</Text>
+        </Box>
+      ))}
+
+      {/* info */}
+      <Box>
+        <Text color={rc(0, frame)}>║ </Text>
+        <Text>   </Text>
+        <Text dimColor>{info.padEnd(46)}</Text>
+        <Text color={rc(7, frame)}> ║</Text>
+      </Box>
+
+      {/* bottom border */}
+      <Box>{BOT_SEGS.map((s, i) => <Text key={i} color={rc(i, frame)} dimColor>{s}</Text>)}</Box>
     </Box>
   )
 }

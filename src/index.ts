@@ -34,7 +34,8 @@ async function main() {
     React.createElement(AzentApp, {
       engine,
       experienceStore,
-      version: '0.1.0',
+      config,
+      version: '0.1.3',
     }),
   )
 

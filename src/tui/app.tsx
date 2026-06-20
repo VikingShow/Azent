@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react'
 import { Box, Text, useApp, useInput } from 'ink'
 import {
-  Header,
+  SplashHeader,
   MessageList,
   PhaseStatus,
   Spinner,
@@ -12,7 +12,7 @@ import {
 import type { LoopEngine } from '../orchestrator/loop.js'
 import type { SupervisorHooks } from '../orchestrator/supervisor.js'
 import type { ExperienceStore } from '../memory/experience.js'
-import type { LoopPhaseResult, ExperienceEntry } from '../config/types.js'
+import type { LoopPhaseResult, ExperienceEntry, AzentConfig } from '../config/types.js'
 
 interface AzentAppState {
   running: boolean
@@ -26,10 +26,12 @@ interface AzentAppState {
 export function AzentApp({
   engine,
   experienceStore,
+  config,
   version = '0.1.0',
 }: {
   engine: LoopEngine
   experienceStore?: ExperienceStore
+  config: AzentConfig
   version?: string
 }) {
   const { exit } = useApp()
@@ -61,18 +63,44 @@ export function AzentApp({
         ...s,
         messages: [...s.messages, {
           role: 'system',
-          text: 'Commands: /exit, /help, /loops, or type a task to run a loop',
+          text: [
+            '── Commands ──────────────────────',
+            '  /help      Show this help',
+            '  /agents    List available agents',
+            '  /loops     List loop templates',
+            '  /exit      Quit',
+            '  /quit      Quit',
+            '',
+            '  Or just type any task to run it.',
+          ].join('\n'),
+        }],
+      }))
+      return
+    }
+
+    if (text === '/agents') {
+      const list = Object.values(config.agents).map(a =>
+        `  ${a.id.padEnd(14)} ${a.name}`
+      ).join('\n')
+      setState((s) => ({
+        ...s,
+        messages: [...s.messages, {
+          role: 'system',
+          text: `── Agents ────────────────────────\n${list}`,
         }],
       }))
       return
     }
 
     if (text === '/loops') {
+      const list = Object.entries(config.loops).map(([id, l]) =>
+        `  ${id.padEnd(14)} ${l.phases.length} phases  ${l.allowModification ? '[modifiable]' : '[fixed]'}`
+      ).join('\n')
       setState((s) => ({
         ...s,
         messages: [...s.messages, {
           role: 'system',
-          text: 'Available loop templates: code-review, quick-fix (configure in .azent/config/loops.yaml)',
+          text: `── Loop Templates ────────────────\n${list}`,
         }],
       }))
       return
@@ -172,11 +200,11 @@ export function AzentApp({
         error: e instanceof Error ? e.message : String(e),
       }))
     }
-  }, [state.running, state.currentLoopId, experienceStore, engine, exit])
+  }, [state.running, state.currentLoopId, experienceStore, engine, exit, config])
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      <Header version={version} />
+      <SplashHeader config={config} version={version} />
       <Box marginY={1} flexDirection="column">
         <MessageList messages={state.messages} />
         {state.phases.length > 0 && <PhaseStatus phases={state.phases} />}
