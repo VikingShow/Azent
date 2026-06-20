@@ -1,6 +1,6 @@
 {
   "name": "@sowrjam/azent",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "type": "module",
   "description": "Agent Loop orchestrator with feedforward-feedback loops, built on Mastra + Ink TUI",
   "license": "MIT",
@@ -44,7 +44,6 @@
     "@mastra/mcp": "latest",
     "@mastra/memory": "latest",
     "ink": "^5.0.0",
-    "react-devtools-core": "^7.0.1",
     "yaml": "^2.5.0",
     "zod": "^3.23.0"
   },
