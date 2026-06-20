@@ -7,8 +7,22 @@ import { createLoopEngine } from './orchestrator/loop.js'
 import { createExperienceStore } from './memory/experience.js'
 import { AzentApp } from './tui/app.js'
 
+const VERSION = '0.1.4'
+
+async function checkUpdate() {
+  try {
+    const res = await fetch('https://registry.npmjs.org/@sowrjam/azent/latest')
+    if (!res.ok) return
+    const { version: latest } = await res.json() as { version: string }
+    if (latest && latest !== VERSION) {
+      console.error(`\x1b[33m\u26a0 Update: ${VERSION} \u2192 ${latest}\x1b[0m`)
+      console.error(`\x1b[33m  Run: npm i -g @sowrjam/azent\x1b[0m`)
+    }
+  } catch { /* offline */ }
+}
+
 async function main() {
-  console.log('Starting Azent...')
+  await checkUpdate()
 
   const { mastra, config, mcpClients } = await createMastraInstance()
   const supervisor = createSupervisor(mastra, config)
@@ -35,7 +49,7 @@ async function main() {
       engine,
       experienceStore,
       config,
-      version: '0.1.3',
+      version: VERSION,
     }),
   )
 
