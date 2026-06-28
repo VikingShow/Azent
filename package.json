@@ -1,10 +1,21 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "name": "azent",
-  "description": "Azent - AI-powered development with feedforward feedback loops, forked from OpenCode",
-  "private": true,
+  "name": "@sowrjam/azent",
+  "version": "0.3.0",
+  "description": "Azent — AI-powered development with feedforward-feedback loops and Zen Layer (Bounded Cognition Engineering), forked from OpenCode",
   "type": "module",
   "packageManager": "bun@1.3.14",
+  "bin": {
+    "azent": "bin/azent.js"
+  },
+  "files": [
+    "bin/",
+    "packages/",
+    "patches/",
+    "package.json",
+    "README.md",
+    "bunfig.toml"
+  ],
   "scripts": {
     "dev": "bun run --cwd packages/app --conditions=browser src/index.ts",
     "lint": "oxlint",
@@ -106,7 +117,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/anomalyco/azent"
+    "url": "https://github.com/VikingShow/Azent"
+  },
+  "engines": {
+    "bun": ">=1.1.0"
   },
   "license": "MIT",
   "prettier": {
