@@ -1,6 +1,6 @@
 import path from "path"
 import { SessionV1 } from "@azent/core/v1/session"
-import { Effect } from "effect"
+import { Effect, Option } from "effect"
 import { Agent } from "@/agent/agent"
 import { FSUtil } from "@azent/core/fs-util"
 import { InstanceState } from "@/effect/instance-state"
@@ -24,17 +24,19 @@ export const apply = Effect.fn("SessionReminders.apply")(function* (input: {
   const userMessage = input.messages.findLast((msg) => msg.info.role === "user")
   if (!userMessage) return input.messages
 
-  const zen = yield* Zen.ZenService
-  const zenContext = yield* zen.renderContext(input.session.id)
-  if (zenContext) {
-    userMessage.parts.push({
-      id: PartID.ascending(),
-      messageID: userMessage.info.id,
-      sessionID: userMessage.info.sessionID,
-      type: "text",
-      text: zenContext,
-      synthetic: true,
-    } as SessionV1.TextPart)
+  const zen = yield* Effect.serviceOption(Zen.ZenService)
+  if (Option.isSome(zen)) {
+    const zenContext = yield* zen.value.renderContext(input.session.id)
+    if (zenContext) {
+      userMessage.parts.push({
+        id: PartID.ascending(),
+        messageID: userMessage.info.id,
+        sessionID: userMessage.info.sessionID,
+        type: "text",
+        text: zenContext,
+        synthetic: true,
+      } as SessionV1.TextPart)
+    }
   }
 
   if (!flags.experimentalPlanMode) {

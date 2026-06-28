@@ -7,8 +7,14 @@ export const BoundaryDeclaration = Schema.Struct({
   implicitKnowledge: Schema.Array(Schema.Struct({
     domain: Schema.String,
     whatIKnow: Schema.String,
-    source: Schema.Literal("training_data", "current_context", "project_analysis", "past_experience", "common_convention"),
-    confidence: Schema.Literal("high", "medium", "low"),
+    source: Schema.Literals([
+      "training_data",
+      "current_context",
+      "project_analysis",
+      "past_experience",
+      "common_convention",
+    ]),
+    confidence: Schema.Literals(["high", "medium", "low"]),
   })),
   plan: Schema.String,
   unknowns: Schema.Array(Schema.Struct({
@@ -21,9 +27,9 @@ export const BoundaryDeclaration = Schema.Struct({
 export const PinnedInstruction = Schema.Struct({
   id: Schema.String,
   content: Schema.String,
-  priority: Schema.Literal("critical", "high", "medium"),
+  priority: Schema.Literals(["critical", "high", "medium"]),
   pinnedAt: Schema.Number,
-  scope: Schema.Literal("session", "agent_turn"),
+  scope: Schema.Literals(["session", "agent_turn"]),
 })
 
 export const ZenAction = Schema.Struct({
@@ -94,13 +100,17 @@ export const layer = Layer.effect(
         if (!s) return
         s.boundary = declaration
         const hasUncertainties = declaration.unknowns.length > 0
-        const hasLowConfidence = declaration.implicitKnowledge.some((k) => k.confidence === "low")
+        const hasLowConfidence = declaration.implicitKnowledge.some(
+          (k) => k.confidence === "low",
+        )
         if (hasUncertainties || hasLowConfidence) {
           s.gateOpen = false
           s.confidenceLevel = "low"
         } else {
           s.gateOpen = true
-          s.confidenceLevel = declaration.implicitKnowledge.every((k) => k.confidence === "high")
+          s.confidenceLevel = declaration.implicitKnowledge.every(
+            (k) => k.confidence === "high",
+          )
             ? "high"
             : "medium"
         }

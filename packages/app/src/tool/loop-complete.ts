@@ -1,4 +1,4 @@
-import { Effect, Schema } from "effect"
+import { Effect, Option, Schema } from "effect"
 import * as Tool from "./tool"
 import { LoopService } from "../session/loop/engine"
 import { Experience } from "../experience/store"
@@ -12,7 +12,7 @@ export const LoopCompleteTool = Tool.define(
   "loop_complete",
   Effect.gen(function* () {
     const loop = yield* LoopService
-    const exp = yield* Experience.ExperienceService
+    const exp = yield* Effect.serviceOption(Experience.ExperienceService)
 
     return {
       description: `Call this tool when you have completed a loop phase and want the system to evaluate the output.
@@ -42,14 +42,16 @@ After evaluation:
             feedback: result.feedback,
           })
 
-          yield* Effect.promise(() => exp.record({
-            feedforward: currentPhase.feedforward,
-            output: params.output,
-            problem: result.passed ? undefined : result.feedback,
-            solution: result.passed ? params.output : undefined,
-            verified: result.passed,
-            projectId: "azent",
-          })).pipe(Effect.ignore)
+          if (Option.isSome(exp)) {
+            yield* Effect.promise(() => exp.value.record({
+              feedforward: currentPhase.feedforward,
+              output: params.output,
+              problem: result.passed ? undefined : result.feedback,
+              solution: result.passed ? params.output : undefined,
+              verified: result.passed,
+              projectId: "azent",
+            })).pipe(Effect.ignore)
+          }
 
           const nextPhase = loop.getCurrentPhase(ctx.sessionID)
           const allComplete = loop.isComplete(ctx.sessionID)

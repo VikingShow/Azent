@@ -51,6 +51,9 @@ import { memoMap } from "@azent/core/effect/memo-map"
 import { BackgroundJob } from "@/background/job"
 import { RuntimeFlags } from "@/effect/runtime-flags"
 import { EventV2Bridge } from "@/event-v2-bridge"
+import { Experience } from "@/experience/store"
+import { Loop } from "@/session/loop/engine"
+import { Zen } from "@azent/core/zen"
 
 export const AppLayer = Layer.mergeAll(
   Npm.defaultLayer,
@@ -100,6 +103,9 @@ export const AppLayer = Layer.mergeAll(
   ShareNext.defaultLayer,
   SessionShare.defaultLayer,
 ).pipe(
+  Layer.provideMerge(Experience.defaultLayer),
+  Layer.provideMerge(Loop.layer),
+  Layer.provideMerge(Zen.defaultLayer),
   Layer.provideMerge(Ripgrep.defaultLayer),
   Layer.provideMerge(InstanceLayer.layer),
   Layer.provideMerge(Observability.layer),

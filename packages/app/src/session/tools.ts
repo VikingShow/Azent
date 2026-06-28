@@ -13,7 +13,7 @@ import { Zen } from "@azent/core/zen"
 import { Plugin } from "@/plugin"
 import type { TaskPromptOps } from "@/tool/task"
 import { type Tool as AITool, tool, jsonSchema, type ToolExecutionOptions, asSchema } from "ai"
-import { Effect } from "effect"
+import { Effect, Option } from "effect"
 import { MessageV2 } from "./message-v2"
 import { Session } from "./session"
 import { SessionProcessor } from "./processor"
@@ -87,13 +87,15 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
             const ctx = context(args, options)
             const destructiveTools = ["edit", "write", "bash", "shell", "apply_patch"]
             if (destructiveTools.includes(item.id)) {
-              const zen = yield* Zen.ZenService
-              const gateResult = yield* zen.gate(ctx.sessionID, { tool: item.id, pattern: "*", context: "" })
-              if (gateResult.type === "block") {
-                return {
-                  title: "Zen Gate blocked",
-                  output: `${gateResult.reason}\n\n${gateResult.requiredAction}`,
-                  metadata: { zenBlocked: true },
+              const zen = yield* Effect.serviceOption(Zen.ZenService)
+              if (Option.isSome(zen)) {
+                const gateResult = yield* zen.value.gate(ctx.sessionID, { tool: item.id, pattern: "*", context: "" })
+                if (gateResult.type === "block") {
+                  return {
+                    title: "Zen Gate blocked",
+                    output: `${gateResult.reason}\n\n${gateResult.requiredAction}`,
+                    metadata: { zenBlocked: true },
+                  }
                 }
               }
             }
