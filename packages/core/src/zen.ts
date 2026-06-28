@@ -1,5 +1,5 @@
 import { Context, Effect, Layer, Schema } from "effect"
-import { SessionSchema } from "../session/schema"
+import { SessionSchema } from "./session/schema"
 
 export const BoundaryDeclaration = Schema.Struct({
   understanding: Schema.String,
@@ -203,4 +203,4 @@ export const layer = Layer.effect(
 
 export const defaultLayer = layer
 
-export * as Zen from "."
+export * as Zen from "./zen"
