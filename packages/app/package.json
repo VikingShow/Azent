@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
   "version": "1.17.8",
-  "name": "azent",
+  "name": "@azent/app",
   "type": "module",
   "license": "MIT",
   "private": true,
