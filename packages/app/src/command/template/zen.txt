@@ -1,0 +1,12 @@
+Display the current Zen Layer state to the user.
+
+Read from your context:
+- <zen_layer> block — contains Gate status, Boundary state, Pinned instructions, Capabilities
+
+Summarize for the user in a clean format:
+- Gate: OPEN or CLOSED (if CLOSED, explain why)
+- Boundary: declared or not (if declared, summarize understanding + assumptions)
+- Pinned instructions: list active pins with priority
+- Capabilities: what the agent knows (from zen_aware declarations)
+
+Be concise. Use a table or bullet format. Do NOT make anything up — only report what's actually in <zen_layer> and <zen_capabilities>.

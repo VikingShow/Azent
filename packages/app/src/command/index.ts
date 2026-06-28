@@ -10,6 +10,8 @@ import { Skill } from "../skill"
 import { EventV2 } from "@azent/core/event"
 import PROMPT_INITIALIZE from "./template/initialize.txt"
 import PROMPT_REVIEW from "./template/review.txt"
+import PROMPT_CAPABILITIES from "./template/capabilities.txt"
+import PROMPT_ZEN from "./template/zen.txt"
 
 type State = {
   commands: Record<string, Info>
@@ -54,6 +56,8 @@ export function hints(template: string) {
 export const Default = {
   INIT: "init",
   REVIEW: "review",
+  CAPABILITIES: "capabilities",
+  ZEN: "zen",
 } as const
 
 export interface Interface {
@@ -93,6 +97,24 @@ export const layer = Layer.effect(
         },
         subtask: true,
         hints: hints(PROMPT_REVIEW),
+      }
+      commands[Default.CAPABILITIES] = {
+        name: Default.CAPABILITIES,
+        description: "show agent capabilities — what it knows and doesn't know",
+        source: "command",
+        get template() {
+          return PROMPT_CAPABILITIES
+        },
+        hints: hints(PROMPT_CAPABILITIES),
+      }
+      commands[Default.ZEN] = {
+        name: Default.ZEN,
+        description: "show Zen Layer state — gate, boundary, pinned instructions, capabilities",
+        source: "command",
+        get template() {
+          return PROMPT_ZEN
+        },
+        hints: hints(PROMPT_ZEN),
       }
 
       for (const [name, command] of Object.entries(cfg.command ?? {})) {

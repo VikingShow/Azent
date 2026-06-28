@@ -1,0 +1,15 @@
+Tell the user what you are capable of right now. Be honest and specific.
+
+Check your context for:
+- <zen_capabilities> — agent-declared knowledge boundaries (from zen_aware tool)
+- <zen_layer> — current Zen state (gate status, pinned instructions)
+
+Report:
+1. Your current knowledge domains and confidence levels
+2. What tools you have access to
+3. What you know about the current project (from context access)
+4. What you're unsure about and need clarification on
+
+If <zen_capabilities> is empty, use the zen_aware tool to first declare your capabilities, then respond.
+
+Be concise. Do NOT make anything up.
