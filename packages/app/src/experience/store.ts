@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto"
 import { mkdir, readFile, writeFile, readdir, unlink } from "node:fs/promises"
 import { join } from "node:path"
+import { Context, Effect, Layer } from "effect"
+import { InstanceState } from "@/effect/instance-state"
 
 export interface ExperienceEntry {
   id: string
@@ -88,3 +90,20 @@ export async function createExperienceStore(dataDir: string): Promise<Experience
     },
   }
 }
+
+export interface ExperienceInterface extends ExperienceStore {}
+
+export class ExperienceService extends Context.Service<ExperienceService, ExperienceInterface>()("@azent/Experience") {}
+
+export const layer = Layer.effect(
+  ExperienceService,
+  Effect.gen(function* () {
+    const ctx = yield* InstanceState.context
+    const dataDir = join(ctx.worktree, ".azent", "data")
+    return yield* Effect.promise(() => createExperienceStore(dataDir))
+  }),
+)
+
+export const defaultLayer = layer
+
+export * as Experience from "./store"
