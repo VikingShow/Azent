@@ -8,6 +8,7 @@ import { RuntimeFlags } from "@/effect/runtime-flags"
 import { PartID } from "./schema"
 import { MessageV2 } from "./message-v2"
 import { Session } from "./session"
+import { Zen } from "@azent/core/zen"
 import PROMPT_PLAN from "./prompt/plan.txt"
 import BUILD_SWITCH from "./prompt/build-switch.txt"
 import PLAN_MODE from "./prompt/plan-mode.txt"
@@ -22,6 +23,19 @@ export const apply = Effect.fn("SessionReminders.apply")(function* (input: {
   const sessions = yield* Session.Service
   const userMessage = input.messages.findLast((msg) => msg.info.role === "user")
   if (!userMessage) return input.messages
+
+  const zen = yield* Zen.ZenService
+  const zenContext = yield* zen.renderContext(input.session.id)
+  if (zenContext) {
+    userMessage.parts.push({
+      id: PartID.ascending(),
+      messageID: userMessage.info.id,
+      sessionID: userMessage.info.sessionID,
+      type: "text",
+      text: zenContext,
+      synthetic: true,
+    } as SessionV1.TextPart)
+  }
 
   if (!flags.experimentalPlanMode) {
     if (input.agent.name === "plan") {

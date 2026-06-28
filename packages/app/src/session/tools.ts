@@ -8,6 +8,7 @@ import { Tool } from "@/tool/tool"
 import { ToolJsonSchema } from "@/tool/json-schema"
 import { ToolRegistry } from "@/tool/registry"
 import { Truncate } from "@/tool/truncate"
+import { Zen } from "@azent/core/zen"
 
 import { Plugin } from "@/plugin"
 import type { TaskPromptOps } from "@/tool/task"
@@ -84,6 +85,18 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
         return run.promise(
           Effect.gen(function* () {
             const ctx = context(args, options)
+            const destructiveTools = ["edit", "write", "bash", "shell", "apply_patch"]
+            if (destructiveTools.includes(item.id)) {
+              const zen = yield* Zen.ZenService
+              const gateResult = yield* zen.gate(ctx.sessionID, { tool: item.id, pattern: "*", context: "" })
+              if (gateResult.type === "block") {
+                return {
+                  title: "Zen Gate blocked",
+                  output: `${gateResult.reason}\n\n${gateResult.requiredAction}`,
+                  metadata: { zenBlocked: true },
+                }
+              }
+            }
             yield* plugin.trigger(
               "tool.execute.before",
               { tool: item.id, sessionID: ctx.sessionID, callID: ctx.callID },
