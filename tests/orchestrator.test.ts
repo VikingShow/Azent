@@ -87,7 +87,12 @@ describe('loop engine', () => {
     } as any
 
     const mockSupervisor = {
-      generate: mock(async () => ({ text: 'Summary' })),
+      generate: mock(async (prompt: string) => {
+        if (prompt.includes('evaluator')) {
+          return { text: '{"passed": true, "score": 85, "feedback": "Output meets acceptance criteria"}' }
+        }
+        return { text: 'Summary' }
+      }),
     } as any
 
     const engine = createLoopEngine(mockMastra, mockConfig, mockSupervisor)

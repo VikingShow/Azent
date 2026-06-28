@@ -8,6 +8,7 @@ import type {
   ExperienceEntry,
 } from '../config/types.js'
 import type { SupervisorHooks } from './supervisor.js'
+import type { ZenGate } from '../zen/index.js'
 
 export interface LoopRunOptions {
   loopId: string
@@ -15,6 +16,7 @@ export interface LoopRunOptions {
   maxRetries?: number
   hooks?: SupervisorHooks
   experience?: ExperienceEntry[]
+  zenGate?: ZenGate
 }
 
 export interface LoopRunResult {
@@ -48,7 +50,7 @@ async function runLoop(
   supervisor: Agent,
   options: LoopRunOptions,
 ): Promise<LoopRunResult> {
-  const { loopId, task, maxRetries = 3, hooks } = options
+  const { loopId, task, maxRetries = 3, hooks, zenGate } = options
   const loop = config.loops[loopId]
 
   if (!loop) {
@@ -91,6 +93,30 @@ async function runLoop(
       }
     }
 
+    if (zenGate && !zenGate.isOpen) {
+      const gateResult = await zenGate.check(task)
+      if (!gateResult.allowed) {
+        const result: LoopPhaseResult = {
+          phaseId: phase.id,
+          agentId: phase.agent,
+          output: '',
+          passed: false,
+          feedback: `Zen Gate blocked: ${gateResult.reason}`,
+          retries: 0,
+        }
+        results.push(result)
+        return {
+          loopId,
+          task,
+          phases: results,
+          success: false,
+          summary: '',
+          error: result.feedback,
+        }
+      }
+      zenGate.open()
+    }
+
     const feedforward: Feedforward = {
       task: buildPhaseTask(task, phase, results, contextBase),
       acceptanceCriteria: phase.acceptance,
@@ -106,6 +132,7 @@ async function runLoop(
     const phaseResult = await executePhase(
       agent,
       feedforward,
+      supervisor,
       maxRetries,
       hooks,
     )
@@ -121,11 +148,6 @@ async function runLoop(
         summary: '',
         error: `Phase "${phase.name}" failed after ${phaseResult.retries} retries`,
       }
-    }
-
-    if (loop.allowModification && hooks?.onPhaseModified) {
-      // Agent could suggest modifications here; handled via supervisor delegation
-      // For now, the loop template is followed strictly unless allowModification enables dynamic changes
     }
   }
 
@@ -143,6 +165,7 @@ async function runLoop(
 async function executePhase(
   agent: Agent,
   feedforward: Feedforward,
+  evaluator: Agent,
   maxRetries: number,
   hooks?: SupervisorHooks,
 ): Promise<LoopPhaseResult> {
@@ -161,7 +184,7 @@ async function executePhase(
 
       lastOutput = response.text
 
-      const evaluation = await evaluateOutput(agent, feedforward, lastOutput)
+      const evaluation = await evaluateOutput(evaluator, feedforward, lastOutput)
 
       if (evaluation.passed) {
         const result: LoopPhaseResult = {
@@ -170,6 +193,7 @@ async function executePhase(
           output: lastOutput,
           passed: true,
           retries,
+          feedback: evaluation.feedback,
         }
         if (hooks?.onPhaseComplete) await hooks.onPhaseComplete(result)
         return result
@@ -204,14 +228,79 @@ async function executePhase(
 }
 
 async function evaluateOutput(
-  agent: Agent,
+  evaluator: Agent,
   feedforward: Feedforward,
   output: string,
-): Promise<{ passed: boolean; feedback: string }> {
-  if (output.length < 10) {
-    return { passed: false, feedback: 'Output too short to be valid' }
+): Promise<{ passed: boolean; feedback: string; score: number }> {
+  if (!output || output.trim().length < 10) {
+    return { passed: false, feedback: 'Output too short to be valid', score: 0 }
   }
-  return { passed: true, feedback: '' }
+
+  const criteria = feedforward.acceptanceCriteria
+  const task = feedforward.task
+
+  try {
+    const evalPrompt = `You are an impartial evaluator. Assess the following agent output against the acceptance criteria.
+
+TASK:
+${task.slice(0, 500)}
+
+ACCEPTANCE CRITERIA:
+${criteria}
+
+AGENT OUTPUT:
+${output.slice(0, 3000)}
+
+Evaluate on these dimensions:
+1. Completeness: Does the output address all parts of the task?
+2. Correctness: Does it meet each acceptance criterion?
+3. Quality: Is the output clear, well-structured, and actionable?
+
+Return your answer as JSON:
+{
+  "passed": true or false,
+  "score": 0-100,
+  "feedback": "specific, actionable feedback. If passed, briefly confirm. If not passed, explain what's missing and how to fix it."
+}`
+
+    const response = await evaluator.generate(evalPrompt, { maxSteps: 3 })
+    const text = response.text.trim()
+
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0])
+      return {
+        passed: Boolean(parsed.passed),
+        score: Number(parsed.score) || 0,
+        feedback: parsed.feedback || (parsed.passed ? 'Output meets criteria' : 'Output does not fully meet criteria'),
+      }
+    }
+
+    const passed = text.toLowerCase().includes('"passed": true') || text.toLowerCase().includes('"passed":true')
+    return {
+      passed,
+      score: passed ? 70 : 30,
+      feedback: text.slice(0, 300),
+    }
+  } catch {
+    const acceptanceWords = criteria.toLowerCase().split(/\s+/).filter((w) => w.length > 3)
+    const outputLower = output.toLowerCase()
+    let matched = 0
+    for (const word of acceptanceWords) {
+      if (outputLower.includes(word)) matched++
+    }
+    const score = acceptanceWords.length > 0
+      ? Math.round((matched / acceptanceWords.length) * 100)
+      : 50
+
+    return {
+      passed: score >= 60,
+      score,
+      feedback: score >= 60
+        ? `Output meets criteria (${score}% keyword match)`
+        : `Output partially meets criteria (${score}% keyword match). Missing key topics.`,
+    }
+  }
 }
 
 async function generateSummary(
@@ -220,12 +309,12 @@ async function generateSummary(
   results: LoopPhaseResult[],
 ): Promise<string> {
   const phaseSummaries = results
-    .map((r) => `[${r.phaseId}] ${r.passed ? 'PASS' : 'FAIL'}: ${r.output.slice(0, 200)}...`)
+    .map((r) => `[${r.phaseId}] ${r.passed ? 'PASS' : 'FAIL'} (score: ${(r as any).score ?? 'N/A'}): ${r.output.slice(0, 200)}...`)
     .join('\n')
 
   try {
     const response = await supervisor.generate(
-      `Task: ${task}\n\nPhase results:\n${phaseSummaries}\n\nSummarize the outcome concisely.`,
+      `Task: ${task}\n\nPhase results:\n${phaseSummaries}\n\nSummarize the outcome concisely in Chinese.`,
       { maxSteps: 3 },
     )
     return response.text
@@ -252,7 +341,7 @@ function buildPhaseTask(
   contextBase: string,
 ): string {
   const prevContext = previousResults.length > 0
-    ? `\n\nPrevious phase outputs:\n${previousResults.map((r) => `[${r.phaseId}]: ${r.output.slice(0, 500)}`).join('\n')}`
+    ? `\n\nPrevious phase outputs:\n${previousResults.map((r) => `[${r.phaseId}] ${r.passed ? 'PASS' : 'FAIL'}: ${r.output.slice(0, 500)}`).join('\n')}`
     : ''
   return `${contextBase}\n\nCurrent phase: ${phase.name}${prevContext}`
 }
