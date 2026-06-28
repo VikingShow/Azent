@@ -113,6 +113,12 @@ export interface Interface {
 
   readonly checkDrift: (sessionID: SessionSchema.ID, lastOutput: string) => Effect.Effect<typeof DriftReport.Type>
 
+  readonly checkDriftDeep: (
+    sessionID: SessionSchema.ID,
+    lastOutput: string,
+    evaluate: (prompt: string) => Effect.Effect<string>,
+  ) => Effect.Effect<typeof DriftReport.Type>
+
   readonly reinjectPinnedInstructions: (sessionID: SessionSchema.ID) => Effect.Effect<string>
 
   readonly renderContext: (sessionID: SessionSchema.ID) => Effect.Effect<string>
@@ -251,6 +257,70 @@ export const layer = Layer.effect(
             ? `The following pinned instructions may have been violated. Re-read them and adjust your output:\n${violated.map((v) => `- ${v.instruction}: ${v.violation}`).join("\n")}`
             : "",
         }
+      }),
+
+      checkDriftDeep: Effect.fn("Zen.checkDriftDeep")(function* (
+        sessionID: SessionSchema.ID,
+        lastOutput: string,
+        evaluate: (prompt: string) => Effect.Effect<string>,
+      ) {
+        const s = state.get(sessionID)
+        if (!s || s.pinnedInstructions.length === 0 || !lastOutput) {
+          return { driftDetected: false, violatedInstructions: [], suggestedFix: "" }
+        }
+
+        const pinsText = s.pinnedInstructions
+          .map((p) => `[${p.priority.toUpperCase()}] ${p.content}`)
+          .join("\n")
+
+        const prompt = [
+          "You are an impartial instruction-compliance auditor. Check if the agent's output violates any pinned instructions.",
+          "",
+          "PINNED INSTRUCTIONS (must not be violated):",
+          pinsText,
+          "",
+          "AGENT OUTPUT:",
+          lastOutput.slice(0, 2000),
+          "",
+          "Return your answer as JSON:",
+          '{',
+          '  "driftDetected": true or false,',
+          '  "violatedInstructions": [',
+          '    {',
+          '      "instruction": "the violated instruction text",',
+          '      "violation": "specific description of what was violated",',
+          '      "possibleCause": "context_window_overflow" | "attention_dilution" | "instruction_conflict" | "mid_conversation_override"',
+          '    }',
+          '  ],',
+          '  "suggestedFix": "specific, actionable fix. Empty if no drift detected."',
+          '}',
+        ].join("\n")
+
+        try {
+          const response = yield* evaluate(prompt)
+          const text = response.trim()
+          const jsonMatch = text.match(/\{[\s\S]*\}/)
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0])
+            return {
+              driftDetected: Boolean(parsed.driftDetected),
+              violatedInstructions: Array.isArray(parsed.violatedInstructions)
+                ? parsed.violatedInstructions.map((v: any) => ({
+                    instruction: v.instruction ?? "",
+                    violation: v.violation ?? "",
+                    possibleCause: v.possibleCause ?? "attention_dilution",
+                  }))
+                : [],
+              suggestedFix: parsed.suggestedFix ?? "",
+            }
+          }
+        } catch {
+          // Fall through to heuristic check
+        }
+
+        return yield* ZenService.checkDrift(sessionID, lastOutput).pipe(
+          Effect.provideService(ZenService, ZenService.of(state as any)),
+        )
       }),
 
       reinjectPinnedInstructions: Effect.fn("Zen.reinject")(function* (sessionID: SessionSchema.ID) {
