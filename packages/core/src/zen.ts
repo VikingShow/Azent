@@ -1,3 +1,40 @@
+/**
+ * Zen Layer — Engineering for Bounded Cognition
+ *
+ * The fundamental constraint of software engineering is that the mind that
+ * changes the system is always far smaller than the system itself. Humans hold
+ * ~4 working memory slots; LLMs suffer the same attention dilution ("Lost in
+ * the Middle"). No bigger model or smarter engineer closes this gap — it's the
+ * permanent condition of the work.
+ *
+ * The Zen Layer externalizes cognitive load from the agent (and human) into
+ * the *shape* of the system, implementing three core protocols:
+ *
+ * Q2 — Boundary Declaration (Implicit → Explicit):
+ *   Surfaces tacit knowledge the agent draws from training data, project
+ *   context, or convention. Before any destructive action, the agent must
+ *   declare *what it assumes*, *where that knowledge came from*, and *how
+ *   confident it is*. This transforms invisible assumptions into testable
+ *   declarations. Tenets: I (Locality), III (Parse, don't validate).
+ *
+ * Q3 — Instruction Pinning (Anti-Drift):
+ *   Critical instructions fade from the LLM's attention window as conversation
+ *   progresses — the "Lost in the Middle" effect. Pinned instructions are
+ *   re-injected at every safe boundary, ensuring they survive context dilution.
+ *   Tenets: XIV (One source of truth), II (Make data flow explicit).
+ *
+ * Gate — Correctness into Structure:
+ *   Any rule you can only enforce by remembering it will eventually be
+ *   forgotten. The gate is a software-enforced checkpoint: no destructive tool
+ *   executes until the boundary is declared and confidence is sufficient.
+ *   Tenets: IV (Trust boundary), III (Parse, don't validate).
+ *
+ * The objective: minimise what a tired engineer (or a context-diluted model)
+ * has to hold in their head to make a correct change, while keeping the blast
+ * radius bounded for anything an attacker or an unlucky caller controls.
+ *
+ * @see https://shapeofthesystem.com/posts/2026/02/03/bounded-cognition
+ */
 import { Context, Effect, Layer, Schema } from "effect"
 import { SessionSchema } from "./session/schema"
 
