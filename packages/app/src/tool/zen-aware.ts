@@ -1,5 +1,6 @@
 import { Effect, Schema } from "effect"
 import * as Tool from "./tool"
+import { Zen } from "@azent/core/zen"
 
 export const Parameters = Schema.Struct({
   whatIKnow: Schema.Array(Schema.Struct({
@@ -18,6 +19,7 @@ export const Parameters = Schema.Struct({
 export const ZenAwareTool = Tool.define(
   "zen_aware",
   Effect.gen(function* () {
+    const zen = yield* Zen.ZenService
     return {
       description: `Use this tool to tell the user what you know and what you don't know about their context and the task at hand. This makes your knowledge boundaries transparent.
 
@@ -32,8 +34,14 @@ What to declare:
 - whatImUnsureAbout: topics you need clarification on, with suggested questions for the user`,
 
       parameters: Parameters,
-      execute: (params) =>
+      execute: (params, ctx) =>
         Effect.gen(function* () {
+          yield* zen.updateCapabilities(ctx.sessionID, params.whatIKnow.map((k) => ({
+            domain: k.domain,
+            detail: k.detail,
+            confidence: k.confidence,
+            source: k.source,
+          })))
           const known = params.whatIKnow.map(
             (k) => `  ✓ ${k.domain} (${k.confidence}, from ${k.source}): ${k.detail}`,
           )

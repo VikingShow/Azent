@@ -98,6 +98,13 @@ export interface ZenState {
   pinnedInstructions: (typeof PinnedInstruction.Type)[]
   gateOpen: boolean
   confidenceLevel: "high" | "medium" | "low" | "unknown"
+  declaredCapabilities: Array<{
+    domain: string
+    detail: string
+    confidence: "high" | "medium" | "low"
+    source: "training_data" | "codebase_analysis" | "user_input" | "past_experience" | "convention"
+    declaredAt: number
+  }>
 }
 
 export interface Interface {
@@ -121,6 +128,18 @@ export interface Interface {
 
   readonly reinjectPinnedInstructions: (sessionID: SessionSchema.ID) => Effect.Effect<string>
 
+  readonly updateCapabilities: (
+    sessionID: SessionSchema.ID,
+    declared: Array<{
+      domain: string
+      detail: string
+      confidence: "high" | "medium" | "low"
+      source: "training_data" | "codebase_analysis" | "user_input" | "past_experience" | "convention"
+    }>,
+  ) => Effect.Effect<void>
+
+  readonly getCapabilities: (sessionID: SessionSchema.ID) => Effect.Effect<typeof ZenState.prototype.declaredCapabilities>
+
   readonly renderContext: (sessionID: SessionSchema.ID) => Effect.Effect<string>
 }
 
@@ -140,6 +159,7 @@ export const layer = Layer.effect(
           pinnedInstructions: [],
           gateOpen: false,
           confidenceLevel: "unknown",
+          declaredCapabilities: [],
         })
       }),
 
@@ -338,6 +358,25 @@ export const layer = Layer.effect(
         ].join("\n")
       }),
 
+      updateCapabilities: Effect.fn("Zen.updateCapabilities")(function* (
+        sessionID: SessionSchema.ID,
+        declared: Array<{
+          domain: string
+          detail: string
+          confidence: "high" | "medium" | "low"
+          source: "training_data" | "codebase_analysis" | "user_input" | "past_experience" | "convention"
+        }>,
+      ) {
+        const s = state.get(sessionID)
+        if (!s) return
+        const now = Date.now()
+        s.declaredCapabilities = declared.map((d) => ({ ...d, declaredAt: now }))
+      }),
+
+      getCapabilities: Effect.fnUntraced(function* (sessionID: SessionSchema.ID) {
+        return state.get(sessionID)?.declaredCapabilities ?? []
+      }),
+
       renderContext: Effect.fn("Zen.renderContext")(function* (sessionID: SessionSchema.ID) {
         const s = state.get(sessionID)
         if (!s) return ""
@@ -371,6 +410,15 @@ export const layer = Layer.effect(
             parts.push(`[${p.priority.toUpperCase()}] ${p.content}`)
           }
           parts.push("</zen_pinned>")
+        }
+        if (s.declaredCapabilities.length > 0) {
+          parts.push("<zen_capabilities>")
+          parts.push("Agent-declared capabilities (via zen_aware):")
+          for (const c of s.declaredCapabilities) {
+            parts.push(`  ${c.confidence === "high" ? "✓" : c.confidence === "medium" ? "~" : "✗"} ${c.domain} (${c.confidence}, from ${c.source}): ${c.detail}`)
+          }
+          parts.push("When user asks about your capabilities, report from this list. Use zen_aware to update it as you learn.")
+          parts.push("</zen_capabilities>")
         }
         parts.push("</zen_layer>")
         return parts.join("\n")
