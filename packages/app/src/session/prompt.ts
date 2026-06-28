@@ -59,6 +59,7 @@ import { eq } from "drizzle-orm"
 import { SessionTable } from "@azent/core/session/sql"
 import { SessionReminders } from "./reminders"
 import { LoopService } from "./loop/engine"
+import { Zen } from "@azent/core/zen"
 import { SessionTools } from "./tools"
 import { LLMEvent } from "@azent/llm"
 
@@ -1314,13 +1315,14 @@ export const layer = Layer.effect(
 
             yield* plugin.trigger("experimental.chat.messages.transform", {}, { messages: msgs })
 
-            const [skills, env, instructions, modelMsgs] = yield* Effect.all([
+            const [skills, env, instructions, caps, modelMsgs] = yield* Effect.all([
               sys.skills(agent),
               sys.environment(model),
               instruction.system().pipe(Effect.orDie),
+              sys.capabilities(agent),
               MessageV2.toModelMessagesEffect(msgs, model),
             ])
-            const system = [...env, ...instructions, ...(skills ? [skills] : [])]
+            const system = [...env, ...instructions, ...(skills ? [skills] : []), ...(caps ? [caps] : [])]
             const format = lastUser.format ?? { type: "text" as const }
             if (format.type === "json_schema") system.push(STRUCTURED_OUTPUT_SYSTEM_PROMPT)
             const result = yield* handle.process({
@@ -1335,6 +1337,27 @@ export const layer = Layer.effect(
               model,
               toolChoice: format.type === "json_schema" ? "required" : undefined,
             })
+
+            const zen = yield* Effect.serviceOption(Zen.ZenService)
+            if (Option.isSome(zen)) {
+              const lastText = handle.message.parts?.filter((p: any) => p.type === "text").map((p: any) => p.text).join(" ") ?? ""
+              if (lastText.length > 20) {
+                const drift = yield* zen.value.checkDrift(sessionID, lastText)
+                if (drift.driftDetected) {
+                  yield* Effect.logWarning("Zen drift detected", {
+                    sessionID,
+                    violations: drift.violatedInstructions.map((v) => v.instruction),
+                  })
+                  if (drift.suggestedFix.length > 0) {
+                    handle.message.parts?.push({
+                      type: "text" as const,
+                      text: `\n\n[Zen drift alert: ${drift.suggestedFix}]`,
+                      synthetic: true,
+                    } as any)
+                  }
+                }
+              }
+            }
 
             if (structured !== undefined) {
               handle.message.structured = structured

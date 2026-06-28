@@ -41,6 +41,7 @@ export function provider(model: Provider.Model) {
 export interface Interface {
   readonly environment: (model: Provider.Model) => Effect.Effect<string[]>
   readonly skills: (agent: Agent.Info) => Effect.Effect<string | undefined>
+  readonly capabilities: (agent: Agent.Info) => Effect.Effect<string | undefined>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/SystemPrompt") {}
@@ -103,6 +104,20 @@ export const layer = Layer.effect(
           // version of them here and a less verbose version in tool description, rather than vice versa.
           Skill.fmt(list, { verbose: true }),
         ].join("\n")
+      }),
+
+      capabilities: Effect.fn("SystemPrompt.capabilities")(function* (agent: Agent.Info) {
+        const caps = agent.capabilities
+        if (!caps) return
+
+        return [
+          "Your declared capabilities (you may use `zen_aware` to update these):",
+          caps.techStacks.length > 0 ? `  Tech stacks: ${caps.techStacks.join(", ")}` : "",
+          `  Context access: ${caps.contextAccess.join(", ")}`,
+          `  Domains: ${caps.domains.join(", ")}`,
+          "",
+          "If the user asks about something outside your declared domains, use `zen_aware` to acknowledge the boundary.",
+        ].filter(Boolean).join("\n")
       }),
     })
   }),

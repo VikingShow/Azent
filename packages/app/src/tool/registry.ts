@@ -3,6 +3,7 @@ import { httpClient } from "@azent/core/effect/layer-node-platform"
 import { Ripgrep } from "@azent/core/ripgrep"
 import { PlanExitTool } from "./plan"
 import { ZenBoundaryTool } from "./zen-boundary"
+import { ZenAwareTool } from "./zen-aware"
 import { LoopCompleteTool } from "./loop-complete"
 import { Session } from "@/session/session"
 import { QuestionTool } from "./question"
@@ -99,6 +100,7 @@ export const layer = Layer.effect(
     const lsptool = yield* LspTool
     const plan = yield* PlanExitTool
     const zen = yield* ZenBoundaryTool
+    const zenAware = yield* ZenAwareTool
     const loop = yield* LoopCompleteTool
     const webfetch = yield* WebFetchTool
     const websearch = yield* WebSearchTool
@@ -217,6 +219,7 @@ export const layer = Layer.effect(
           lsp: Tool.init(lsptool),
           plan: Tool.init(plan),
           zen: Tool.init(zen),
+          zenAware: Tool.init(zenAware),
           loopComplete: Tool.init(loop),
         })
 
@@ -240,6 +243,7 @@ export const layer = Layer.effect(
             ...(flags.experimentalLspTool ? [tool.lsp] : []),
             ...(flags.experimentalPlanMode && flags.client === "cli" ? [tool.plan] : []),
             tool.zen,
+            tool.zenAware,
             ...(flags.experimentalPlanMode ? [tool.loopComplete] : []),
           ],
           task: tool.task,
