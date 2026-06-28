@@ -82,6 +82,16 @@ export const GateResult = Schema.Union([
   Schema.Struct({ type: Schema.Literal("warn"), reason: Schema.String }),
 ]).pipe(Schema.toTaggedUnion("type"))
 
+export const DriftReport = Schema.Struct({
+  driftDetected: Schema.Boolean,
+  violatedInstructions: Schema.Array(Schema.Struct({
+    instruction: Schema.String,
+    violation: Schema.String,
+    possibleCause: Schema.Literals(["context_window_overflow", "attention_dilution", "instruction_conflict", "mid_conversation_override"]),
+  })),
+  suggestedFix: Schema.String,
+})
+
 export interface ZenState {
   sessionID: string
   boundary?: typeof BoundaryDeclaration.Type
@@ -100,6 +110,8 @@ export interface Interface {
 
   readonly pin: (sessionID: SessionSchema.ID, instruction: typeof PinnedInstruction.Type) => Effect.Effect<void>
   readonly getActivePins: (sessionID: SessionSchema.ID) => Effect.Effect<(typeof PinnedInstruction.Type)[]>
+
+  readonly checkDrift: (sessionID: SessionSchema.ID, lastOutput: string) => Effect.Effect<typeof DriftReport.Type>
 
   readonly reinjectPinnedInstructions: (sessionID: SessionSchema.ID) => Effect.Effect<string>
 
@@ -192,6 +204,55 @@ export const layer = Layer.effect(
         return state.get(sessionID)?.pinnedInstructions ?? []
       }),
 
+      checkDrift: Effect.fn("Zen.checkDrift")(function* (sessionID: SessionSchema.ID, lastOutput: string) {
+        const s = state.get(sessionID)
+        const violated: typeof DriftReport.Type["violatedInstructions"] = []
+
+        if (!s || s.pinnedInstructions.length === 0 || !lastOutput) {
+          return { driftDetected: false, violatedInstructions: [], suggestedFix: "" }
+        }
+
+        const outputLower = lastOutput.toLowerCase()
+
+        for (const pin of s.pinnedInstructions) {
+          const contentLower = pin.content.toLowerCase()
+
+          const negations = extractNegationTerms(pin.content)
+          for (const neg of negations) {
+            const negLower = neg.toLowerCase()
+            if (outputLower.includes(negLower)) {
+              violated.push({
+                instruction: pin.content,
+                violation: `Output appears to use "${neg}" which was explicitly prohibited`,
+                possibleCause: "attention_dilution",
+              })
+              break
+            }
+          }
+
+          if (pin.priority === "critical") {
+            const keyTerms = extractKeyTerms(pin.content)
+            const missing = keyTerms.filter((t) => !outputLower.includes(t.toLowerCase()))
+            if (missing.length >= keyTerms.length * 0.5 && keyTerms.length > 0 && !violated.some((v) => v.instruction === pin.content)) {
+              violated.push({
+                instruction: pin.content,
+                violation: `Output may be missing compliance with: ${missing.join(", ")}`,
+                possibleCause: "context_window_overflow",
+              })
+            }
+          }
+        }
+
+        const driftDetected = violated.length > 0
+        return {
+          driftDetected,
+          violatedInstructions: violated,
+          suggestedFix: driftDetected
+            ? `The following pinned instructions may have been violated. Re-read them and adjust your output:\n${violated.map((v) => `- ${v.instruction}: ${v.violation}`).join("\n")}`
+            : "",
+        }
+      }),
+
       reinjectPinnedInstructions: Effect.fn("Zen.reinject")(function* (sessionID: SessionSchema.ID) {
         const s = state.get(sessionID)
         if (!s || s.pinnedInstructions.length === 0) return ""
@@ -249,5 +310,33 @@ export const layer = Layer.effect(
 )
 
 export const defaultLayer = layer
+
+const NEGATION_PATTERNS = [
+  "do not", "don't", "never", "must not", "should not", "shouldn't",
+  "avoid", "forbidden", "prohibited", "without exception", "under no circumstances",
+]
+
+function extractNegationTerms(instruction: string): string[] {
+  const lower = instruction.toLowerCase()
+  const terms: string[] = []
+  for (const pattern of NEGATION_PATTERNS) {
+    const idx = lower.indexOf(pattern)
+    if (idx >= 0) {
+      const after = instruction.slice(idx + pattern.length).trim()
+      const end = Math.min(after.length, 80)
+      const snippet = after.slice(0, end).replace(/[.,;!?].*/, "").trim()
+      if (snippet.length > 2) terms.push(snippet)
+    }
+  }
+  return terms
+}
+
+function extractKeyTerms(instruction: string): string[] {
+  return instruction
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "")
+    .split(/\s+/)
+    .filter((w) => w.length > 3 && !["that", "this", "with", "from", "your", "have", "will", "when", "make", "they", "them", "then", "than", "also", "just", "only", "very", "much", "such", "must", "should", "never"].includes(w))
+}
 
 export * as Zen from "./zen"

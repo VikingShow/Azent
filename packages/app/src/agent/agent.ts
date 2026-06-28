@@ -53,6 +53,11 @@ export const Info = Schema.Struct({
   prompt: Schema.optional(Schema.String),
   options: Schema.Record(Schema.String, Schema.Unknown),
   steps: Schema.optional(Schema.Finite),
+  capabilities: Schema.optional(Schema.Struct({
+    techStacks: Schema.Array(Schema.String),
+    contextAccess: Schema.Array(Schema.Literals(["filesystem", "git", "dependencies", "environment", "past_experiences"])),
+    domains: Schema.Array(Schema.String),
+  })),
 }).annotate({ identifier: "Agent" })
 export type Info = DeepMutable<Schema.Schema.Type<typeof Info>>
 
@@ -151,10 +156,15 @@ export const layer = Layer.effect(
             ),
             mode: "primary",
             native: true,
+            capabilities: {
+              techStacks: ["typescript", "javascript", "python", "bun", "node", "react", "solidjs"],
+              contextAccess: ["filesystem", "git", "dependencies", "environment", "past_experiences"],
+              domains: ["web_development", "devops", "database_design", "testing", "code_review"],
+            },
           },
           plan: {
             name: "plan",
-            description: "Plan mode. Disallows all edit tools.",
+            description: "Plan mode — thinking partner. Disallows all edit tools. Declares boundary, surfaces assumptions, considers alternatives.",
             options: {},
             permission: Permission.merge(
               defaults,
@@ -177,6 +187,11 @@ export const layer = Layer.effect(
             ),
             mode: "primary",
             native: true,
+            capabilities: {
+              techStacks: [],
+              contextAccess: ["filesystem", "git", "dependencies", "environment", "past_experiences"],
+              domains: ["requirements_analysis", "architecture_design", "risk_assessment", "trade_off_analysis"],
+            },
           },
           supervisor: {
             name: "supervisor",
@@ -197,6 +212,11 @@ export const layer = Layer.effect(
             prompt: PROMPT_SUPERVISOR,
             mode: "primary",
             native: true,
+            capabilities: {
+              techStacks: [],
+              contextAccess: ["filesystem", "git", "environment"],
+              domains: ["task_orchestration", "phase_management", "quality_assurance"],
+            },
           },
           general: {
             name: "general",

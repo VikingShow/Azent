@@ -58,6 +58,7 @@ import * as DateTime from "effect/DateTime"
 import { eq } from "drizzle-orm"
 import { SessionTable } from "@azent/core/session/sql"
 import { SessionReminders } from "./reminders"
+import { LoopService } from "./loop/engine"
 import { SessionTools } from "./tools"
 import { LLMEvent } from "@azent/llm"
 
@@ -1221,6 +1222,13 @@ export const layer = Layer.effect(
           }
 
           const agent = yield* agents.get(lastUser.agent)
+          const loopSvc = yield* Effect.serviceOption(LoopService)
+          if (agent.name === "supervisor" && Option.isSome(loopSvc)) {
+            const loopState = loopSvc.value.getState(sessionID)
+            if (loopState) {
+              yield* loopSvc.value.advancePhase(sessionID)
+            }
+          }
           if (!agent) {
             const available = (yield* agents.list()).filter((a) => !a.hidden).map((a) => a.name)
             const hint = available.length ? ` Available agents: ${available.join(", ")}` : ""
