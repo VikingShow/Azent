@@ -9,6 +9,7 @@ import { PartID } from "./schema"
 import { MessageV2 } from "./message-v2"
 import { Session } from "./session"
 import { Zen } from "@azent/core/zen"
+import { Experience } from "@/experience/store"
 import PROMPT_PLAN from "./prompt/plan.txt"
 import BUILD_SWITCH from "./prompt/build-switch.txt"
 import PLAN_MODE from "./prompt/plan-mode.txt"
@@ -88,6 +89,37 @@ export const apply = Effect.fn("SessionReminders.apply")(function* (input: {
   const ctx = yield* InstanceState.context
   const plan = Session.plan(input.session, ctx)
   const exists = yield* fsys.existsSafe(plan)
+
+  const userText = userMessage.parts
+    .filter((p) => p.type === "text" && !p.synthetic)
+    .map((p) => p.text)
+    .join("\n")
+    .slice(0, 500)
+
+  const expStore = yield* Effect.serviceOption(Experience.ExperienceService)
+  if (Option.isSome(expStore) && userText.length > 10) {
+    const experiences = yield* Effect.promise(() => expStore.value.search(userText, 3))
+    if (experiences.length > 0) {
+      const expBlock = [
+        "<zen_experience>",
+        "Past experiences that may be relevant to this task:",
+        ...experiences.map((e) =>
+          `- Task: ${e.feedforward.slice(0, 150)}\n  Outcome: ${e.output.slice(0, 150)}\n  ${e.problem ? `Watch out: ${e.problem}` : `Verified: ${e.verified}`}`,
+        ),
+        "Learn from these. If you see a similar pattern, mention it to the user.",
+        "</zen_experience>",
+      ].join("\n")
+      userMessage.parts.push({
+        id: PartID.ascending(),
+        messageID: userMessage.info.id,
+        sessionID: userMessage.info.sessionID,
+        type: "text",
+        text: expBlock,
+        synthetic: true,
+      } as SessionV1.TextPart)
+    }
+  }
+
   if (!exists) yield* fsys.ensureDir(path.dirname(plan)).pipe(Effect.catch(Effect.die))
   const part = yield* sessions.updatePart({
     id: PartID.ascending(),

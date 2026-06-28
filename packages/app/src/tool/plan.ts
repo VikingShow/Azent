@@ -1,6 +1,6 @@
 import path from "path"
 import { SessionV1 } from "@azent/core/v1/session"
-import { Effect, Schema } from "effect"
+import { Effect, Option, Schema } from "effect"
 import * as Tool from "./tool"
 import { Question } from "../question"
 import { Session } from "@/session/session"
@@ -9,6 +9,7 @@ import { Provider } from "@/provider/provider"
 import { InstanceState } from "@/effect/instance-state"
 import { MessageID, PartID } from "../session/schema"
 import { LoopService } from "../session/loop/engine"
+import { Zen } from "@azent/core/zen"
 import EXIT_DESCRIPTION from "./plan-exit.txt"
 
 const LoopPhaseSchema = Schema.Struct({
@@ -34,6 +35,7 @@ export const PlanExitTool = Tool.define(
     const question = yield* Question.Service
     const provider = yield* Provider.Service
     const loop = yield* LoopService
+    const zen = yield* Effect.serviceOption(Zen.ZenService)
 
     return {
       description: EXIT_DESCRIPTION,
@@ -78,6 +80,26 @@ export const PlanExitTool = Tool.define(
 
           const choice = answers[0]?.[0]
           if (choice === "Edit") yield* new Question.RejectedError()
+
+          const hasBoundary = Option.isSome(zen)
+            ? (yield* zen.value.getState(ctx.sessionID))?.boundary !== undefined
+            : true
+
+          if (!hasBoundary) {
+            return {
+              title: "Boundary not declared",
+              output: [
+                "Before switching to build or loop mode, you should call `zen_boundary` to declare:",
+                "- Your understanding of the task",
+                "- Your assumptions",
+                "- Your implicit knowledge sources and confidence levels",
+                "- Any unknowns that need clarification",
+                "",
+                "If you believe your plan is complete and boundary is implicit, say 'proceed' and the user will be asked again.",
+              ].join("\n"),
+              metadata: { boundaryMissing: true },
+            }
+          }
 
           const isBuild = choice === "Build" || (!isLoop && choice === "Yes")
           const targetAgent = isBuild ? "build" : "supervisor"
