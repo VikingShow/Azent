@@ -32,12 +32,12 @@ export const ZenAction = Schema.Struct({
   context: Schema.String,
 })
 
-export const GateResult = Schema.Union(
+export const GateResult = Schema.Union([
   Schema.Struct({ type: Schema.Literal("allow") }),
   Schema.Struct({ type: Schema.Literal("block"), reason: Schema.String, requiredAction: Schema.String }),
   Schema.Struct({ type: Schema.Literal("clarify"), questions: Schema.Array(Schema.String) }),
   Schema.Struct({ type: Schema.Literal("warn"), reason: Schema.String }),
-)
+]).pipe(Schema.toTaggedUnion("type"))
 
 export interface ZenState {
   sessionID: string
