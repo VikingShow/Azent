@@ -8,6 +8,7 @@ import { MessageV2 } from "../session/message-v2"
 import { Provider } from "@/provider/provider"
 import { InstanceState } from "@/effect/instance-state"
 import { MessageID, PartID } from "../session/schema"
+import { LoopService } from "../session/loop/engine"
 import EXIT_DESCRIPTION from "./plan-exit.txt"
 
 const LoopPhaseSchema = Schema.Struct({
@@ -32,6 +33,7 @@ export const PlanExitTool = Tool.define(
     const session = yield* Session.Service
     const question = yield* Question.Service
     const provider = yield* Provider.Service
+    const loop = yield* LoopService
 
     return {
       description: EXIT_DESCRIPTION,
@@ -105,6 +107,11 @@ export const PlanExitTool = Tool.define(
               synthetic: true,
             } satisfies SessionV1.TextPart)
           } else {
+            const loopPlan = {
+              phases: params.loopTemplate!.phases,
+              planPath,
+            }
+            yield* loop.initLoop(ctx.sessionID, loopPlan)
             const phasesDesc = params.loopTemplate!.phases.map((p) => `  ${p.id} (${p.agent}): ${p.feedforward}`).join("\n")
             yield* session.updatePart({
               id: PartID.ascending(),
