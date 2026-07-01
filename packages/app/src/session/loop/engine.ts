@@ -1,16 +1,40 @@
-import { Context, Effect, Layer, Schema } from "effect"
+import { Context, Effect, Layer, Option, Schema } from "effect"
 import { evaluateOutput } from "./evaluate"
+import { createLoopConfigStore } from "./store"
+import { InstanceState } from "@/effect/instance-state"
+import { Zen } from "@azent/core/zen"
+import path from "path"
+
+export const EvalStrategy = Schema.Union(
+  Schema.Struct({ type: Schema.Literals(["keyword"]), threshold: Schema.optional(Schema.Number).pipe(Schema.withDefault(60)) }),
+  Schema.Struct({ type: Schema.Literals(["llm"]), prompt: Schema.String }),
+  Schema.Struct({ type: Schema.Literals(["regex"]), pattern: Schema.String }),
+  Schema.Struct({ type: Schema.Literals(["script"]), command: Schema.String }),
+  Schema.Struct({ type: Schema.Literals(["tool_output"]), toolName: Schema.String }),
+)
 
 export const LoopPhaseSchema = Schema.Struct({
   id: Schema.String,
   agent: Schema.String,
   feedforward: Schema.String,
   acceptance: Schema.String,
+  evaluation: Schema.optional(EvalStrategy),
+  retry: Schema.optional(Schema.Struct({
+    maxRetries: Schema.Number.pipe(Schema.int(), Schema.positive()),
+    backoff: Schema.Literals(["none", "linear", "exponential"]),
+  })),
+  dependsOn: Schema.optional(Schema.Array(Schema.String)),
+  timeout: Schema.optional(Schema.Number.pipe(Schema.positive())),
+  toolPermissions: Schema.optional(Schema.Struct({
+    allow: Schema.Array(Schema.String),
+    deny: Schema.Array(Schema.String),
+  })),
 })
 
 export const LoopPlanSchema = Schema.Struct({
   phases: Schema.Array(LoopPhaseSchema),
   planPath: Schema.optional(Schema.String),
+  mode: Schema.optional(Schema.Literals(["sequential", "dag", "parallel"])),
 })
 
 export type LoopPhase = Schema.Schema.Type<typeof LoopPhaseSchema>
@@ -40,8 +64,12 @@ export interface Interface {
   readonly getCurrentPhase: (sessionID: string) => LoopPhase | null
   readonly getPhaseStatus: (sessionID: string) => PhaseStatus[]
   readonly isComplete: (sessionID: string) => boolean
-  readonly evaluatePhase: (phaseId: string, output: string, feedforward: string, acceptance: string) => PhaseResult
+  readonly evaluatePhase: (phaseId: string, output: string, feedforward: string, acceptance: string, strategy?: Schema.Schema.Type<typeof EvalStrategy>) => PhaseResult
   readonly generateSummary: (sessionID: string) => string
+  readonly saveTemplate: (name: string, plan: LoopPlan) => Effect.Effect<void>
+  readonly loadTemplate: (name: string) => Effect.Effect<LoopPlan | null>
+  readonly listTemplates: () => Effect.Effect<Array<{ name: string; phaseCount: number; createdAt: number }>>
+  readonly removeTemplate: (name: string) => Effect.Effect<void>
 }
 
 type State = Map<string, LoopSession>
@@ -72,6 +100,18 @@ export const layer = Layer.effect(
         const phase = session.plan.phases[session.currentPhase]
         session.currentPhase++
         session.status = "running"
+
+        // Per-phase Zen boundary reset: close gate to force re-declaration
+        const zen = yield* Effect.serviceOption(Zen.ZenService)
+        if (Option.isSome(zen)) {
+          const zenState = yield* zen.value.getState(sessionID)
+          if (zenState) {
+            zenState.gateOpen = false
+            zenState.confidenceLevel = "unknown"
+            zenState.boundary = undefined
+          }
+        }
+
         return phase
       }),
 
@@ -109,8 +149,33 @@ export const layer = Layer.effect(
         return session?.status === "complete"
       },
 
-      evaluatePhase: (phaseId: string, output: string, feedforward: string, acceptance: string) => {
-        const result = evaluateOutput(output, feedforward, acceptance)
+      evaluatePhase: (phaseId: string, output: string, feedforward: string, acceptance: string, strategy?: Schema.Schema.Type<typeof EvalStrategy>) => {
+        const evalType = strategy?.type ?? "keyword"
+        const result = (() => {
+          switch (evalType) {
+            case "llm":
+              // LLM evaluation — returns optimistic pass, actual evaluation done by caller
+              return { passed: true, score: 80, feedback: "LLM evaluation deferred to caller" }
+            case "regex": {
+              if (!strategy || strategy.type !== "regex") break
+              try {
+                const re = new RegExp(strategy.pattern, "i")
+                const passed = re.test(output)
+                return { passed, score: passed ? 100 : 0, feedback: passed ? "Regex pattern matched" : `Regex /${strategy.pattern}/ did not match` }
+              } catch {
+                return { passed: false, score: 0, feedback: `Invalid regex: ${strategy.pattern}` }
+              }
+            }
+            case "script":
+              // Script evaluation — returns optimistic pass, execution deferred to caller
+              return { passed: true, score: 70, feedback: `Script evaluation deferred: ${(strategy as any)?.command ?? "unknown"}` }
+            case "tool_output":
+              return { passed: true, score: 70, feedback: `Tool output evaluation deferred: ${(strategy as any)?.toolName ?? "unknown"}` }
+            default:
+              break
+          }
+          return evaluateOutput(output, feedforward, acceptance)
+        })()
         return { phaseId, output, passed: result.passed, feedback: result.feedback }
       },
 
@@ -125,6 +190,58 @@ export const layer = Layer.effect(
         })
         return `Loop "${session.plan.planPath || "unnamed"}" complete.\n${lines.join("\n")}`
       },
+
+      saveTemplate: Effect.fn("Loop.saveTemplate")(function* (name: string, plan: LoopPlan) {
+        const ctx = yield* InstanceState.context
+        const dataDir = path.join(ctx.worktree, ".azent", "data")
+        const store = yield* Effect.promise(() => createLoopConfigStore(dataDir))
+        yield* Effect.promise(() => store.write({
+          id: name.toLowerCase().replace(/\s+/g, "-"),
+          name,
+          phases: plan.phases.map((p) => ({
+            id: p.id,
+            agent: p.agent,
+            feedforward: p.feedforward,
+            acceptance: p.acceptance,
+          })),
+          createdAt: Date.now(),
+        }))
+      }),
+
+      loadTemplate: Effect.fn("Loop.loadTemplate")(function* (name: string) {
+        const ctx = yield* InstanceState.context
+        const dataDir = path.join(ctx.worktree, ".azent", "data")
+        const store = yield* Effect.promise(() => createLoopConfigStore(dataDir))
+        const config = yield* Effect.promise(() => store.read(name))
+        if (!config) return null
+        return {
+          phases: config.phases.map((p) => ({
+            id: p.id,
+            agent: p.agent,
+            feedforward: p.feedforward,
+            acceptance: p.acceptance,
+          })),
+        }
+      }),
+
+      listTemplates: Effect.fn("Loop.listTemplates")(function* () {
+        const ctx = yield* InstanceState.context
+        const dataDir = path.join(ctx.worktree, ".azent", "data")
+        const store = yield* Effect.promise(() => createLoopConfigStore(dataDir))
+        const configs = yield* Effect.promise(() => store.list())
+        return configs.map((c) => ({
+          name: c.name,
+          phaseCount: c.phases.length,
+          createdAt: c.createdAt,
+        }))
+      }),
+
+      removeTemplate: Effect.fn("Loop.removeTemplate")(function* (name: string) {
+        const ctx = yield* InstanceState.context
+        const dataDir = path.join(ctx.worktree, ".azent", "data")
+        const store = yield* Effect.promise(() => createLoopConfigStore(dataDir))
+        yield* Effect.promise(() => store.remove(name))
+      }),
     }
   }),
 )

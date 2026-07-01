@@ -1,6 +1,6 @@
 import { Effect, Option, Schema } from "effect"
 import * as Tool from "./tool"
-import { LoopService } from "../session/loop/engine"
+import { LoopService, type LoopPhase } from "../session/loop/engine"
 import { Experience } from "../experience/store"
 
 export const Parameters = Schema.Struct({
@@ -34,7 +34,13 @@ After evaluation:
             }
           }
 
-          const result = loop.evaluatePhase(params.phaseId, params.output, currentPhase.feedforward, currentPhase.acceptance)
+          const result = loop.evaluatePhase(
+            params.phaseId,
+            params.output,
+            currentPhase.feedforward,
+            currentPhase.acceptance,
+            (currentPhase as LoopPhase).evaluation,
+          )
 
           yield* loop.completePhase(ctx.sessionID, {
             phaseId: params.phaseId,

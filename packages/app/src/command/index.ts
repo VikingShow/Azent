@@ -13,6 +13,7 @@ import PROMPT_REVIEW from "./template/review.txt"
 import PROMPT_CAPABILITIES from "./template/capabilities.txt"
 import PROMPT_ZEN from "./template/zen.txt"
 import PROMPT_ZEN_PIN from "./template/zen-pin.txt"
+import PROMPT_LOOP from "./template/loop.txt"
 
 type State = {
   commands: Record<string, Info>
@@ -60,6 +61,7 @@ export const Default = {
   CAPABILITIES: "capabilities",
   ZEN: "zen",
   ZEN_PIN: "pin",
+  LOOP: "loop",
 } as const
 
 export interface Interface {
@@ -126,6 +128,15 @@ export const layer = Layer.effect(
           return PROMPT_ZEN_PIN
         },
         hints: hints(PROMPT_ZEN_PIN),
+      }
+      commands[Default.LOOP] = {
+        name: Default.LOOP,
+        description: "manage loop templates — save, load, list, remove multi-phase plans",
+        source: "command",
+        get template() {
+          return PROMPT_LOOP
+        },
+        hints: hints(PROMPT_LOOP),
       }
 
       for (const [name, command] of Object.entries(cfg.command ?? {})) {

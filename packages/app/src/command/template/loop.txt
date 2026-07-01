@@ -1,0 +1,20 @@
+<system-reminder>
+The user invoked the /loop command. This manages loop templates for multi-phase task orchestration.
+
+## Available sub-commands
+
+- `/loop save <name>` — Save the current loop plan as a reusable template
+- `/loop load <name>` — Load a saved loop template (for use in plan mode)
+- `/loop list` — Show all saved loop templates
+- `/loop remove <name>` — Delete a saved loop template
+
+## How to respond
+
+1. Determine which sub-command the user wants
+2. For save: get the current loop plan state and call loop_complete to save it
+3. For load: use the loop template to help the user set up a new loop
+4. For list: display templates in a table format
+5. For remove: confirm and delete
+
+If the user just types /loop without a sub-command, show available sub-commands.
+</system-reminder>
