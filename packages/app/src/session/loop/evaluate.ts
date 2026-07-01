@@ -4,7 +4,7 @@ export interface EvalResult {
   feedback: string
 }
 
-export function evaluateOutput(output: string, feedforward: string, acceptance: string): EvalResult {
+export function evaluateOutput(output: string, feedforward: string, acceptance: string, threshold = 60): EvalResult {
   // Minimum viability checks
   if (!output || output.length < 10) {
     return { passed: false, score: 0, feedback: "Output too short to be valid" }
@@ -33,7 +33,7 @@ export function evaluateOutput(output: string, feedforward: string, acceptance: 
     : 50
 
   const finalScore = Math.round((score + taskScore) / 2)
-  const passed = finalScore >= 60
+  const passed = finalScore >= threshold
 
   return {
     passed,

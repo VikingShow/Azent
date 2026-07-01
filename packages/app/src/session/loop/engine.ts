@@ -3,15 +3,16 @@ import { evaluateOutput } from "./evaluate"
 import { createLoopConfigStore } from "./store"
 import { InstanceState } from "@/effect/instance-state"
 import { Zen } from "@azent/core/zen"
+import { SessionSchema } from "@azent/core/session/schema"
 import path from "path"
 
-export const EvalStrategy = Schema.Union(
-  Schema.Struct({ type: Schema.Literals(["keyword"]), threshold: Schema.optional(Schema.Number).pipe(Schema.withDefault(60)) }),
+export const EvalStrategy = Schema.Union([
+  Schema.Struct({ type: Schema.Literals(["keyword"]), threshold: Schema.optional(Schema.Number) }),
   Schema.Struct({ type: Schema.Literals(["llm"]), prompt: Schema.String }),
   Schema.Struct({ type: Schema.Literals(["regex"]), pattern: Schema.String }),
   Schema.Struct({ type: Schema.Literals(["script"]), command: Schema.String }),
   Schema.Struct({ type: Schema.Literals(["tool_output"]), toolName: Schema.String }),
-)
+])
 
 export const LoopPhaseSchema = Schema.Struct({
   id: Schema.String,
@@ -20,11 +21,11 @@ export const LoopPhaseSchema = Schema.Struct({
   acceptance: Schema.String,
   evaluation: Schema.optional(EvalStrategy),
   retry: Schema.optional(Schema.Struct({
-    maxRetries: Schema.Number.pipe(Schema.int(), Schema.positive()),
+    maxRetries: Schema.Number,
     backoff: Schema.Literals(["none", "linear", "exponential"]),
   })),
   dependsOn: Schema.optional(Schema.Array(Schema.String)),
-  timeout: Schema.optional(Schema.Number.pipe(Schema.positive())),
+  timeout: Schema.optional(Schema.Number),
   toolPermissions: Schema.optional(Schema.Struct({
     allow: Schema.Array(Schema.String),
     deny: Schema.Array(Schema.String),
@@ -104,7 +105,7 @@ export const layer = Layer.effect(
         // Per-phase Zen boundary reset: close gate to force re-declaration
         const zen = yield* Effect.serviceOption(Zen.ZenService)
         if (Option.isSome(zen)) {
-          const zenState = yield* zen.value.getState(sessionID)
+          const zenState = yield* zen.value.getState(sessionID as SessionSchema.ID)
           if (zenState) {
             zenState.gateOpen = false
             zenState.confidenceLevel = "unknown"
@@ -174,7 +175,7 @@ export const layer = Layer.effect(
             default:
               break
           }
-          return evaluateOutput(output, feedforward, acceptance)
+          return evaluateOutput(output, feedforward, acceptance, (strategy as any)?.threshold)
         })()
         return { phaseId, output, passed: result.passed, feedback: result.feedback }
       },
