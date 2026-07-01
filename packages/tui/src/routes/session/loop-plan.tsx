@@ -65,9 +65,7 @@ export function LoopPlanCard(props: LoopPlanCardProps) {
           <Show when={runningCount() > 0} fallback={<text fg={theme.success}>✓</text>}>
             <LoopSpinner />
           </Show>
-          <text fg={theme.text} bold>
-            Loop Plan
-          </text>
+          <text fg={theme.text}>Loop Plan</text>
           <text fg={theme.textMuted}>
             ({completeCount()}/{totalCount()} phases)
           </text>

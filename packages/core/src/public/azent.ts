@@ -1,5 +1,3 @@
-export * as Azent from "./opencode"
-
 import { Context, Effect, Layer } from "effect"
 import { Catalog } from "../catalog"
 import { Database } from "../database/database"
@@ -127,3 +125,6 @@ export const layer = Layer.effect(
 ).pipe(Layer.provide(Layer.merge(ApplicationToolsLayer, SessionsLayer)))
 
 // TODO: Add OpenCode.create(...) as the Promise facade over the same native API semantics.
+
+export const OpenCode = Object.assign(Service, { layer })
+export type { Interface as AzentInterface }

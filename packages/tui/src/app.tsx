@@ -1092,7 +1092,7 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
           <pluginRuntime.Slot name="app_bottom" />
         </box>
         <box flexShrink={0} justifyContent="center" paddingBottom={1}>
-          <text color={theme.textMuted}>Powered by OpenCode</text>
+          <text fg={theme.textMuted}>Powered by OpenCode</text>
         </box>
         <pluginRuntime.Slot name="app" />
       </Show>

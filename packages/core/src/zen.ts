@@ -141,7 +141,13 @@ export interface Interface {
     }>,
   ) => Effect.Effect<void>
 
-  readonly getCapabilities: (sessionID: SessionSchema.ID) => Effect.Effect<typeof ZenState.prototype.declaredCapabilities>
+  readonly getCapabilities: (sessionID: SessionSchema.ID) => Effect.Effect<Array<{
+    domain: string
+    detail: string
+    confidence: "high" | "medium" | "low"
+    source: "training_data" | "codebase_analysis" | "user_input" | "past_experience" | "convention"
+    declaredAt: number
+  }>>
 
   readonly renderContext: (sessionID: SessionSchema.ID) => Effect.Effect<string>
 
@@ -235,11 +241,17 @@ export const layer = Layer.effect(
         s.gateOpen = false
         s.confidenceLevel = "low"
         if (s.boundary) {
-          s.boundary.unknowns.push({
-            topic: `Escalation: ${reason}`,
-            whyImportant: "Critical instruction violation detected via drift check",
-            suggestedQuestion: `The system detected a violation of: ${reason}. Please review your last action and re-declare your boundary before continuing.`,
-          })
+          s.boundary = {
+            ...s.boundary,
+            unknowns: [
+              ...s.boundary.unknowns,
+              {
+                topic: `Escalation: ${reason}`,
+                whyImportant: "Critical instruction violation detected via drift check",
+                suggestedQuestion: `The system detected a violation of: ${reason}. Please review your last action and re-declare your boundary before continuing.`,
+              },
+            ],
+          }
         }
       }),
 
@@ -254,52 +266,7 @@ export const layer = Layer.effect(
       }),
 
       checkDrift: Effect.fn("Zen.checkDrift")(function* (sessionID: SessionSchema.ID, lastOutput: string) {
-        const s = state.get(sessionID)
-        const violated: typeof DriftReport.Type["violatedInstructions"] = []
-
-        if (!s || s.pinnedInstructions.length === 0 || !lastOutput) {
-          return { driftDetected: false, violatedInstructions: [], suggestedFix: "" }
-        }
-
-        const outputLower = lastOutput.toLowerCase()
-
-        for (const pin of s.pinnedInstructions) {
-          const contentLower = pin.content.toLowerCase()
-
-          const negations = extractNegationTerms(pin.content)
-          for (const neg of negations) {
-            const negLower = neg.toLowerCase()
-            if (outputLower.includes(negLower)) {
-              violated.push({
-                instruction: pin.content,
-                violation: `Output appears to use "${neg}" which was explicitly prohibited`,
-                possibleCause: "attention_dilution",
-              })
-              break
-            }
-          }
-
-          if (pin.priority === "critical") {
-            const keyTerms = extractKeyTerms(pin.content)
-            const missing = keyTerms.filter((t) => !outputLower.includes(t.toLowerCase()))
-            if (missing.length >= keyTerms.length * 0.5 && keyTerms.length > 0 && !violated.some((v) => v.instruction === pin.content)) {
-              violated.push({
-                instruction: pin.content,
-                violation: `Output may be missing compliance with: ${missing.join(", ")}`,
-                possibleCause: "context_window_overflow",
-              })
-            }
-          }
-        }
-
-        const driftDetected = violated.length > 0
-        return {
-          driftDetected,
-          violatedInstructions: violated,
-          suggestedFix: driftDetected
-            ? `The following pinned instructions may have been violated. Re-read them and adjust your output:\n${violated.map((v) => `- ${v.instruction}: ${v.violation}`).join("\n")}`
-            : "",
-        }
+        return heuristicDriftCheck(state, sessionID, lastOutput)
       }),
 
       checkDriftDeep: Effect.fn("Zen.checkDriftDeep")(function* (
@@ -361,9 +328,8 @@ export const layer = Layer.effect(
           // Fall through to heuristic check
         }
 
-        return yield* ZenService.checkDrift(sessionID, lastOutput).pipe(
-          Effect.provideService(ZenService, ZenService.of(state as any)),
-        )
+        // Fallback to heuristic drift check
+        return heuristicDriftCheck(state, sessionID, lastOutput)
       }),
 
       reinjectPinnedInstructions: Effect.fn("Zen.reinject")(function* (sessionID: SessionSchema.ID) {
@@ -478,6 +444,65 @@ function extractNegationTerms(instruction: string): string[] {
     }
   }
   return terms
+}
+
+function heuristicDriftCheck(
+  state: State,
+  sessionID: SessionSchema.ID,
+  lastOutput: string,
+): typeof DriftReport.Type {
+  const s = state.get(sessionID)
+  const violated: Array<{
+    instruction: string
+    violation: string
+    possibleCause: "context_window_overflow" | "attention_dilution" | "instruction_conflict" | "mid_conversation_override"
+  }> = []
+
+  if (!s || s.pinnedInstructions.length === 0 || !lastOutput) {
+    return { driftDetected: false, violatedInstructions: [], suggestedFix: "" }
+  }
+
+  const outputLower = lastOutput.toLowerCase()
+
+  for (const pin of s.pinnedInstructions) {
+    const negations = extractNegationTerms(pin.content)
+    for (const neg of negations) {
+      const negLower = neg.toLowerCase()
+      if (outputLower.includes(negLower)) {
+        violated.push({
+          instruction: pin.content,
+          violation: `Output appears to use "${neg}" which was explicitly prohibited`,
+          possibleCause: "attention_dilution",
+        })
+        break
+      }
+    }
+
+    if (pin.priority === "critical") {
+      const keyTerms = extractKeyTerms(pin.content)
+      const missing = keyTerms.filter((t) => !outputLower.includes(t.toLowerCase()))
+      if (
+        missing.length >= keyTerms.length * 0.5 &&
+        keyTerms.length > 0 &&
+        !violated.some((v) => v.instruction === pin.content)
+      ) {
+        violated.push({
+          instruction: pin.content,
+          violation: `Output may be missing compliance with: ${missing.join(", ")}`,
+          possibleCause: "context_window_overflow",
+        })
+      }
+    }
+  }
+
+  const driftDetected = violated.length > 0
+  return {
+    driftDetected,
+    violatedInstructions: violated,
+    suggestedFix: driftDetected
+      ? `The following pinned instructions may have been violated. Re-read them and adjust your output:\n${violated.map((v) => `- ${v.instruction}: ${v.violation}`).join("\n")}`
+      : "",
+  }
 }
 
 function extractKeyTerms(instruction: string): string[] {
