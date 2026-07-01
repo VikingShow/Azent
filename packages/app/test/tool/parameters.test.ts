@@ -194,7 +194,7 @@ describe("tool parameters", () => {
 
   describe("plan", () => {
     test("accepts empty object", () => {
-      expect(parse(Plan, {})).toEqual({})
+      expect(parse(Plan, { mode: "build" })).toEqual({ mode: "build" })
     })
   })
 

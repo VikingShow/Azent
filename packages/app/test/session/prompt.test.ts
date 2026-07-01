@@ -56,6 +56,8 @@ import { reply, TestLLMServer } from "../lib/llm-server"
 import { RuntimeFlags } from "@/effect/runtime-flags"
 import { ProviderV2 } from "@azent/core/provider"
 import { ModelV2 } from "@azent/core/model"
+import { Zen } from "@azent/core/zen"
+import { Loop } from "../../src/session/loop/engine"
 
 const summary = Layer.succeed(
   SessionSummary.Service,
@@ -193,6 +195,8 @@ function makePrompt(input?: { processor?: "blocking" }) {
     Layer.provide(Ripgrep.defaultLayer),
     Layer.provide(Format.defaultLayer),
     Layer.provide(RuntimeFlags.layer({ experimentalEventSystem: true })),
+    Layer.provide(Zen.layer),
+    Layer.provide(Loop.layer),
     Layer.provideMerge(todo),
     Layer.provideMerge(question),
     Layer.provideMerge(deps),

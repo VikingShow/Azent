@@ -72,6 +72,6 @@ After evaluation:
             metadata: { passed: result.passed, nextPhase: nextPhase?.id },
           }
         }).pipe(Effect.orDie),
-    }
+    } as Tool.DefWithoutID<typeof Parameters, any>
   }),
 )

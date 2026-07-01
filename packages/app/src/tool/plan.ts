@@ -24,7 +24,7 @@ const LoopTemplateSchema = Schema.Struct({
 })
 
 export const Parameters = Schema.Struct({
-  mode: Schema.Literal("build", "loop"),
+  mode: Schema.Literals(["build", "loop"]),
   loopTemplate: Schema.optional(LoopTemplateSchema),
 })
 
@@ -40,8 +40,9 @@ export const PlanExitTool = Tool.define(
     return {
       description: EXIT_DESCRIPTION,
       parameters: Parameters,
-      execute: (params: { mode: string; loopTemplate?: { phases: Array<{ id: string; agent: string; feedforward: string; acceptance: string }> } }, ctx: Tool.Context) =>
+      execute: (args, ctx: Tool.Context) =>
         Effect.gen(function* () {
+          const params = args as Schema.Schema.Type<typeof Parameters>
           const instance = yield* InstanceState.context
           const info = yield* session.get(ctx.sessionID)
           const planPath = path.relative(instance.worktree, Session.plan(info, instance))
@@ -152,6 +153,6 @@ export const PlanExitTool = Tool.define(
             metadata: {},
           }
         }).pipe(Effect.orDie),
-    }
+    } as Tool.DefWithoutID<typeof Parameters, any>
   }),
 )

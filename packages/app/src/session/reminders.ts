@@ -91,8 +91,8 @@ export const apply = Effect.fn("SessionReminders.apply")(function* (input: {
   const exists = yield* fsys.existsSafe(plan)
 
   const userText = userMessage.parts
-    .filter((p) => p.type === "text" && !p.synthetic)
-    .map((p) => p.text)
+    .filter((p) => p.type === "text" && !("synthetic" in p && p.synthetic))
+    .map((p) => (p as SessionV1.TextPart).text)
     .join("\n")
     .slice(0, 500)
 

@@ -8,8 +8,8 @@ export const Parameters = Schema.Struct({
   implicitKnowledge: Schema.Array(Schema.Struct({
     domain: Schema.String,
     whatIKnow: Schema.String,
-    source: Schema.Literal("training_data", "current_context", "project_analysis", "past_experience", "common_convention"),
-    confidence: Schema.Literal("high", "medium", "low"),
+    source: Schema.Literals(["training_data", "current_context", "project_analysis", "past_experience", "common_convention"]),
+    confidence: Schema.Literals(["high", "medium", "low"]),
   })),
   plan: Schema.String,
   unknowns: Schema.Array(Schema.Struct({
