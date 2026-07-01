@@ -1160,6 +1160,38 @@ export const layer = Layer.effect(
               } catch { /* ignore parse errors */ }
             }
           })
+          // Auto-pin CRITICAL/NEVER/MUST constraints from system instructions
+          const existingPins = yield* zenOpt.value.getActivePins(sessionID)
+          if (existingPins.length === 0) {
+            const sysInstructions = yield* instruction.system().pipe(Effect.orDie)
+            for (const text of sysInstructions) {
+              for (const line of text.split("\n")) {
+                const trimmed = line.trim()
+                if (!trimmed) continue
+                // Detect constraint markers
+                const criticalMatch = trimmed.match(/^(?:CRITICAL|!!!)\s*:\s*(.+)/i)
+                const neverMatch = trimmed.match(/^(?:NEVER)\s*:\s*(.+)/i)
+                const mustMatch = trimmed.match(/^(?:MUST(?:\s+NOT)?)\s*:\s*(.+)/i)
+                if (criticalMatch || neverMatch) {
+                  yield* zenOpt.value.pin(sessionID, {
+                    id: `auto_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                    content: trimmed,
+                    priority: "critical",
+                    pinnedAt: Date.now(),
+                    scope: "session",
+                  })
+                } else if (mustMatch) {
+                  yield* zenOpt.value.pin(sessionID, {
+                    id: `auto_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                    content: trimmed,
+                    priority: "high",
+                    pinnedAt: Date.now(),
+                    scope: "session",
+                  })
+                }
+              }
+            }
+          }
         }
 
         while (true) {
@@ -1362,7 +1394,8 @@ export const layer = Layer.effect(
 
             const zen = yield* Effect.serviceOption(Zen.ZenService)
             if (Option.isSome(zen)) {
-              const lastText = handle.message.parts?.filter((p: any) => p.type === "text").map((p: any) => p.text).join(" ") ?? ""
+              const msg = handle.message as SessionV1.WithParts
+              const lastText = msg.parts?.filter((p: any) => p.type === "text").map((p: any) => p.text).join(" ") ?? ""
               if (lastText.length > 20) {
                 const drift = yield* zen.value.checkDrift(sessionID, lastText)
                 if (drift.driftDetected) {
@@ -1381,7 +1414,7 @@ export const layer = Layer.effect(
 
                   if (drift.suggestedFix.length > 0) {
                     const severity = hasCriticalViolation ? "CRITICAL" : "WARNING"
-                    handle.message.parts?.push({
+                    msg.parts?.push({
                       type: "text" as const,
                       text: `\n\n[Zen drift ${severity}: ${drift.suggestedFix}${hasCriticalViolation ? "\nGate has been closed. Re-declare your boundary (zen_boundary) before continuing." : ""}]`,
                       synthetic: true,

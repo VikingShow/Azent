@@ -309,19 +309,37 @@ export const layer = Layer.effect(
         try {
           const response = yield* evaluate(prompt)
           const text = response.trim()
-          const jsonMatch = text.match(/\{[\s\S]*\}/)
-          if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0])
+
+          // Try multiple JSON extraction strategies
+          let parsed: any = null
+
+          // Strategy 1: ```json code block
+          const fencedMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/)
+          if (fencedMatch) {
+            try { parsed = JSON.parse(fencedMatch[1].trim()) } catch { /* try next */ }
+          }
+
+          // Strategy 2: raw JSON object in text
+          if (!parsed) {
+            const jsonMatch = text.match(/\{[\s\S]*\}/)
+            if (jsonMatch) {
+              try { parsed = JSON.parse(jsonMatch[0]) } catch { /* try next */ }
+            }
+          }
+
+          if (parsed) {
             return {
               driftDetected: Boolean(parsed.driftDetected),
               violatedInstructions: Array.isArray(parsed.violatedInstructions)
                 ? parsed.violatedInstructions.map((v: any) => ({
-                    instruction: v.instruction ?? "",
-                    violation: v.violation ?? "",
-                    possibleCause: v.possibleCause ?? "attention_dilution",
+                    instruction: String(v.instruction ?? ""),
+                    violation: String(v.violation ?? ""),
+                    possibleCause: ["context_window_overflow", "attention_dilution", "instruction_conflict", "mid_conversation_override"].includes(v.possibleCause)
+                      ? v.possibleCause as "context_window_overflow" | "attention_dilution" | "instruction_conflict" | "mid_conversation_override"
+                      : "attention_dilution" as const,
                   }))
                 : [],
-              suggestedFix: parsed.suggestedFix ?? "",
+              suggestedFix: String(parsed.suggestedFix ?? ""),
             }
           }
         } catch {

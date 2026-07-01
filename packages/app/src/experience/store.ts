@@ -44,19 +44,64 @@ export async function createExperienceStore(dataDir: string): Promise<Experience
     return entries
   }
 
+  // Simple stopwords for TF-IDF
+  const STOPWORDS = new Set([
+    "the", "this", "that", "with", "from", "your", "have", "will", "when",
+    "make", "they", "them", "then", "than", "also", "just", "only", "very",
+    "much", "such", "must", "should", "never", "always", "each", "every",
+    "which", "what", "been", "being", "were", "their", "about", "into",
+    "other", "some", "could", "would", "these", "those",
+  ])
+
+  function tokenize(text: string): string[] {
+    return text
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((w) => w.length > 2 && !STOPWORDS.has(w))
+  }
+
   function score(entry: ExperienceEntry, query: string): number {
-    const lower = query.toLowerCase()
+    const queryTokens = tokenize(query)
+    if (queryTokens.length === 0) return 0
+
     const texts = [entry.feedforward, entry.problem, entry.solution, entry.output].filter(Boolean) as string[]
-    let score = 0
-    for (const text of texts) {
-      const lowerText = text.toLowerCase()
-      const words = lower.split(/\s+/)
-      for (const word of words) {
-        if (word.length < 2) continue
-        if (lowerText.includes(word)) score += word.length / texts.length
+    const docTokens = tokenize(texts.join(" "))
+
+    // TF: term frequency in document
+    let tfScore = 0
+    for (const qt of queryTokens) {
+      const count = docTokens.filter((dt) => dt === qt).length
+      if (count > 0) {
+        tfScore += Math.log1p(count) / docTokens.length
       }
     }
-    return score
+
+    // Field importance: feedforward and problem are more important
+    const feedforwardTokens = tokenize(entry.feedforward || "")
+    const problemTokens = tokenize(entry.problem || "")
+    let fieldBoost = 0
+    for (const qt of queryTokens) {
+      if (feedforwardTokens.includes(qt)) fieldBoost += 0.3
+      if (problemTokens.includes(qt)) fieldBoost += 0.2
+    }
+
+    return tfScore + fieldBoost
+  }
+
+  // In-memory cache to avoid disk reads on every search
+  let cache: ExperienceEntry[] | null = null
+  let cacheVersion = 0
+
+  function invalidateCache() {
+    cache = null
+    cacheVersion++
+  }
+
+  async function loadAllCached(): Promise<ExperienceEntry[]> {
+    if (cache) return cache
+    cache = await loadAll()
+    return cache
   }
 
   return {
@@ -65,11 +110,12 @@ export async function createExperienceStore(dataDir: string): Promise<Experience
       const createdAt = Date.now()
       const full: ExperienceEntry = { id, ...entry, createdAt }
       await writeFile(filePath(id), JSON.stringify(full, null, 2))
+      invalidateCache()
       return id
     },
 
     search: async (query, topK = 5) => {
-      const all = await loadAll()
+      const all = await loadAllCached()
       const scored = all.map((e) => ({ entry: e, score: score(e, query) }))
       scored.sort((a, b) => b.score - a.score)
       return scored.slice(0, topK).map((s) => s.entry)

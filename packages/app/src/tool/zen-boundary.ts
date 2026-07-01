@@ -42,8 +42,9 @@ After calling this, the system will:
 - Ask clarifying questions if needed`,
 
       parameters: Parameters,
-      execute: (params, ctx) =>
+      execute: (args, ctx) =>
         Effect.gen(function* () {
+          const params = args as Schema.Schema.Type<typeof Parameters>
           yield* zen.declareBoundary(ctx.sessionID, params)
 
           const hasUncertainties = params.unknowns.length > 0

@@ -37,8 +37,9 @@ Priority levels:
 - medium: Good practice, worth remembering.`,
 
       parameters: Parameters,
-      execute: (params, ctx) =>
+      execute: (args, ctx) =>
         Effect.gen(function* () {
+          const params = args as Schema.Schema.Type<typeof Parameters>
           for (const inst of params.instructions) {
             yield* zen.pin(ctx.sessionID, {
               id: `pin_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,

@@ -34,8 +34,9 @@ What to declare:
 - whatImUnsureAbout: topics you need clarification on, with suggested questions for the user`,
 
       parameters: Parameters,
-      execute: (params, ctx) =>
+      execute: (args, ctx) =>
         Effect.gen(function* () {
+          const params = args as Schema.Schema.Type<typeof Parameters>
           yield* zen.updateCapabilities(ctx.sessionID, params.whatIKnow.map((k) => ({
             domain: k.domain,
             detail: k.detail,
