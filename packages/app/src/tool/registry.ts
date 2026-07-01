@@ -4,6 +4,7 @@ import { Ripgrep } from "@azent/core/ripgrep"
 import { PlanExitTool } from "./plan"
 import { ZenBoundaryTool } from "./zen-boundary"
 import { ZenAwareTool } from "./zen-aware"
+import { ZenPinTool } from "./zen-pin"
 import { LoopCompleteTool } from "./loop-complete"
 import { Session } from "@/session/session"
 import { QuestionTool } from "./question"
@@ -101,6 +102,7 @@ export const layer = Layer.effect(
     const plan = yield* PlanExitTool
     const zen = yield* ZenBoundaryTool
     const zenAware = yield* ZenAwareTool
+    const zenPin = yield* ZenPinTool
     const loop = yield* LoopCompleteTool
     const webfetch = yield* WebFetchTool
     const websearch = yield* WebSearchTool
@@ -220,6 +222,7 @@ export const layer = Layer.effect(
           plan: Tool.init(plan),
           zen: Tool.init(zen),
           zenAware: Tool.init(zenAware),
+          zenPin: Tool.init(zenPin),
           loopComplete: Tool.init(loop),
         })
 
@@ -244,6 +247,7 @@ export const layer = Layer.effect(
             ...(flags.experimentalPlanMode && flags.client === "cli" ? [tool.plan] : []),
             tool.zen,
             tool.zenAware,
+            tool.zenPin,
             ...(flags.experimentalPlanMode ? [tool.loopComplete] : []),
           ],
           task: tool.task,

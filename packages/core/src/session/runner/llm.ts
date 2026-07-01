@@ -33,6 +33,7 @@ import { type RunError, Service, StepLimitExceededError } from "./index"
 import { SessionRunnerModel } from "./model"
 import { createLLMEventPublisher } from "./publish-llm-event"
 import { toLLMMessages } from "./to-llm-message"
+import { Zen } from "../../zen"
 
 /**
  * Runs one durable coding-agent Session until it settles.
@@ -70,6 +71,14 @@ import { toLLMMessages } from "./to-llm-message"
  *   - [x] Reload projected history and start the next explicit provider turn after local tool results.
  *   - [x] Continue for durable user steering accepted during an active provider turn.
  *   - [ ] Continue for compaction or another continuation condition when required.
+ *
+ * - Zen Layer integration (bounded-cognition safety net)
+ *   - [ ] Call zen.init(sessionID) at session start.
+ *   - [ ] Inject zen.renderContext() into system context assembly (loadSystemContext).
+ *   - [ ] Check zen.gate() before destructive tool execution in tool settlement.
+ *   - [ ] Run zen.checkDrift() after each assistant turn (after providerStream).
+ *   - [ ] Call zen.reinjectPinnedInstructions() on context compaction.
+ *   - [ ] Persist Zen state (via zen.exportState / zen.importState).
  *
  * - Post-run maintenance
  *   - [ ] Settle final status and expose durable output events to replayable consumers.

@@ -12,6 +12,7 @@ import PROMPT_INITIALIZE from "./template/initialize.txt"
 import PROMPT_REVIEW from "./template/review.txt"
 import PROMPT_CAPABILITIES from "./template/capabilities.txt"
 import PROMPT_ZEN from "./template/zen.txt"
+import PROMPT_ZEN_PIN from "./template/zen-pin.txt"
 
 type State = {
   commands: Record<string, Info>
@@ -58,6 +59,7 @@ export const Default = {
   REVIEW: "review",
   CAPABILITIES: "capabilities",
   ZEN: "zen",
+  ZEN_PIN: "pin",
 } as const
 
 export interface Interface {
@@ -115,6 +117,15 @@ export const layer = Layer.effect(
           return PROMPT_ZEN
         },
         hints: hints(PROMPT_ZEN),
+      }
+      commands[Default.ZEN_PIN] = {
+        name: Default.ZEN_PIN,
+        description: "pin critical instructions to survive context dilution (Q3 anti-drift)",
+        source: "command",
+        get template() {
+          return PROMPT_ZEN_PIN
+        },
+        hints: hints(PROMPT_ZEN_PIN),
       }
 
       for (const [name, command] of Object.entries(cfg.command ?? {})) {

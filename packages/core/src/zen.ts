@@ -80,6 +80,7 @@ export const GateResult = Schema.Union([
   Schema.Struct({ type: Schema.Literal("block"), reason: Schema.String, requiredAction: Schema.String }),
   Schema.Struct({ type: Schema.Literal("clarify"), questions: Schema.Array(Schema.String) }),
   Schema.Struct({ type: Schema.Literal("warn"), reason: Schema.String }),
+  Schema.Struct({ type: Schema.Literal("escalate"), reason: Schema.String }),
 ]).pipe(Schema.toTaggedUnion("type"))
 
 export const DriftReport = Schema.Struct({
@@ -115,6 +116,8 @@ export interface Interface {
 
   readonly gate: (sessionID: SessionSchema.ID, action: typeof ZenAction.Type) => Effect.Effect<typeof GateResult.Type>
 
+  readonly escalate: (sessionID: SessionSchema.ID, reason: string) => Effect.Effect<void>
+
   readonly pin: (sessionID: SessionSchema.ID, instruction: typeof PinnedInstruction.Type) => Effect.Effect<void>
   readonly getActivePins: (sessionID: SessionSchema.ID) => Effect.Effect<(typeof PinnedInstruction.Type)[]>
 
@@ -141,6 +144,10 @@ export interface Interface {
   readonly getCapabilities: (sessionID: SessionSchema.ID) => Effect.Effect<typeof ZenState.prototype.declaredCapabilities>
 
   readonly renderContext: (sessionID: SessionSchema.ID) => Effect.Effect<string>
+
+  readonly exportState: (sessionID: SessionSchema.ID) => Effect.Effect<ZenState | undefined>
+
+  readonly importState: (sessionID: SessionSchema.ID, data: ZenState) => Effect.Effect<void>
 }
 
 type State = Map<string, ZenState>
@@ -154,13 +161,15 @@ export const layer = Layer.effect(
 
     return ZenService.of({
       init: Effect.fn("Zen.init")(function* (sessionID: SessionSchema.ID) {
-        state.set(sessionID, {
-          sessionID,
-          pinnedInstructions: [],
-          gateOpen: false,
-          confidenceLevel: "unknown",
-          declaredCapabilities: [],
-        })
+        if (!state.has(sessionID)) {
+          state.set(sessionID, {
+            sessionID,
+            pinnedInstructions: [],
+            gateOpen: false,
+            confidenceLevel: "unknown",
+            declaredCapabilities: [],
+          })
+        }
       }),
 
       getState: Effect.fnUntraced(function* (sessionID: SessionSchema.ID) {
@@ -218,6 +227,20 @@ export const layer = Layer.effect(
         }
 
         return { type: "allow" } as const
+      }),
+
+      escalate: Effect.fn("Zen.escalate")(function* (sessionID: SessionSchema.ID, reason: string) {
+        const s = state.get(sessionID)
+        if (!s) return
+        s.gateOpen = false
+        s.confidenceLevel = "low"
+        if (s.boundary) {
+          s.boundary.unknowns.push({
+            topic: `Escalation: ${reason}`,
+            whyImportant: "Critical instruction violation detected via drift check",
+            suggestedQuestion: `The system detected a violation of: ${reason}. Please review your last action and re-declare your boundary before continuing.`,
+          })
+        }
       }),
 
       pin: Effect.fn("Zen.pin")(function* (sessionID: SessionSchema.ID, instruction: typeof PinnedInstruction.Type) {
@@ -422,6 +445,14 @@ export const layer = Layer.effect(
         }
         parts.push("</zen_layer>")
         return parts.join("\n")
+      }),
+
+      exportState: Effect.fnUntraced(function* (sessionID: SessionSchema.ID) {
+        return state.get(sessionID)
+      }),
+
+      importState: Effect.fn("Zen.importState")(function* (sessionID: SessionSchema.ID, data: ZenState) {
+        state.set(sessionID, data)
       }),
     })
   }),

@@ -1140,6 +1140,28 @@ export const layer = Layer.effect(
         let step = 0
         const session = yield* sessions.get(sessionID).pipe(Effect.orDie)
 
+        const zenOpt = yield* Effect.serviceOption(Zen.ZenService)
+        if (Option.isSome(zenOpt)) {
+          yield* zenOpt.value.init(sessionID)
+          // Restore persisted Zen state from previous session
+          const zenFile = path.join(ctx.worktree, ".azent", "data", "zen", `${sessionID}.json`)
+          yield* Effect.gen(function* () {
+            const data = yield* Effect.promise(async () => {
+              try {
+                const { readFile } = await import("node:fs/promises")
+                return await readFile(zenFile, "utf-8")
+              } catch {
+                return undefined
+              }
+            })
+            if (data) {
+              try {
+                yield* zenOpt.value.importState(sessionID, JSON.parse(data))
+              } catch { /* ignore parse errors */ }
+            }
+          })
+        }
+
         while (true) {
           yield* status.set(sessionID, { type: "busy" })
           yield* Effect.logInfo("loop", { "session.id": sessionID, step })
@@ -1348,14 +1370,34 @@ export const layer = Layer.effect(
                     sessionID,
                     violations: drift.violatedInstructions.map((v) => v.instruction),
                   })
+
+                  // Escalate critical violations: close the gate to force re-boundary
+                  const hasCriticalViolation = drift.violatedInstructions.some(
+                    (v) => v.possibleCause === "context_window_overflow",
+                  )
+                  if (hasCriticalViolation) {
+                    yield* zen.value.escalate(sessionID, "critical_drift")
+                  }
+
                   if (drift.suggestedFix.length > 0) {
+                    const severity = hasCriticalViolation ? "CRITICAL" : "WARNING"
                     handle.message.parts?.push({
                       type: "text" as const,
-                      text: `\n\n[Zen drift alert: ${drift.suggestedFix}]`,
+                      text: `\n\n[Zen drift ${severity}: ${drift.suggestedFix}${hasCriticalViolation ? "\nGate has been closed. Re-declare your boundary (zen_boundary) before continuing." : ""}]`,
                       synthetic: true,
                     } as any)
                   }
                 }
+              }
+              // Persist Zen state after each turn
+              const zenState = yield* zen.value.exportState(sessionID)
+              if (zenState) {
+                const zenDir = path.join(ctx.worktree, ".azent", "data", "zen")
+                yield* Effect.promise(async () => {
+                  const { mkdir, writeFile } = await import("node:fs/promises")
+                  await mkdir(zenDir, { recursive: true })
+                  await writeFile(path.join(zenDir, `${sessionID}.json`), JSON.stringify(zenState, null, 2))
+                })
               }
             }
 

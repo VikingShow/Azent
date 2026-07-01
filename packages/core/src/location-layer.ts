@@ -47,6 +47,7 @@ import * as SessionRunnerLLM from "./session/runner/llm"
 import { SessionRunnerModel } from "./session/runner/model"
 import { SystemContextBuiltIns } from "./system-context/builtins"
 import { FetchHttpClient } from "effect/unstable/http"
+import { Zen } from "./zen"
 
 export class LocationServiceMap extends LayerMap.Service<LocationServiceMap>()("@opencode/example/LocationServiceMap", {
   lookup: (ref: Location.Ref) => {
@@ -66,6 +67,7 @@ export class LocationServiceMap extends LayerMap.Service<LocationServiceMap>()("
       CommandV2.locationLayer,
       AgentV2.locationLayer,
       PluginBoot.locationLayer,
+      Zen.layer,
       ProjectCopy.locationLayer,
       FileSystem.locationLayer,
       Watcher.locationLayer,

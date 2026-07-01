@@ -45,6 +45,61 @@ type HookSpec = {
       sdk?: any
     }
   }
+  "zen.gate": {
+    input: {
+      sessionID: string
+      tool: string
+      gateOpen: boolean
+      boundaryDeclared: boolean
+      confidenceLevel: string
+    }
+    output: {
+      allowed?: boolean
+      reason?: string
+      requiredAction?: string
+    }
+  }
+  "zen.drift": {
+    input: {
+      sessionID: string
+      lastOutput: string
+      activePins: Array<{ content: string; priority: string }>
+    }
+    output: {
+      driftDetected?: boolean
+      violations?: Array<{
+        instruction: string
+        violation: string
+        possibleCause: string
+      }>
+      suggestedFix?: string
+    }
+  }
+  "zen.context.render": {
+    input: {
+      sessionID: string
+      gateOpen: boolean
+      boundaryDeclared: boolean
+      pinCount: number
+      capabilitiesCount: number
+    }
+    output: {
+      contextText?: string
+    }
+  }
+  "zen.boundary.declared": {
+    input: {
+      sessionID: string
+      understanding: string
+      assumptions: string[]
+      unknownsCount: number
+      confidenceLevel: string
+    }
+    output: {
+      warnings?: string[]
+      suggestions?: string[]
+    }
+  }
 }
 
 export type Hooks = {

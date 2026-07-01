@@ -1,0 +1,45 @@
+<system-reminder>
+The user invoked the /pin command. This command pins critical instructions so they survive context dilution (Q3 anti-drift protection).
+
+## What to do
+
+The user wants to pin one or more instructions. These instructions will be:
+1. Re-injected at every safe boundary (before each agent turn)
+2. Checked for violations via drift detection after each assistant turn
+3. Sorted by priority (critical first) in the context
+
+## How to respond
+
+1. Read the user's message carefully to extract the instruction(s) they want pinned
+2. For each instruction, determine:
+   - **content**: The exact instruction text
+   - **priority**:
+     - `critical` — if the user says "never", "must not", "absolutely", "critical"
+     - `high` — if the user says "important", "make sure", "always"
+     - `medium` — if it's a general guideline or good practice (default)
+   - **scope**:
+     - `session` — if the instruction should persist for the entire session (default)
+     - `agent_turn` — if it only applies to the current task
+
+3. Call the `zen_pin` tool with all instructions at once
+4. After pinning, confirm to the user: "✓ Pinned N instruction(s). They will survive context dilution."
+
+## Priority defaults
+
+If the user doesn't specify a priority:
+- Commands starting with "never", "must not", "do not" → `critical`
+- Commands starting with "always", "make sure" → `high`
+- Everything else → `medium`
+
+## Examples
+
+User: /pin NEVER use console.log, always use the logger utility
+→ pin [{ content: "NEVER use console.log", priority: "critical", scope: "session" },
+        { content: "always use the logger utility for logging", priority: "high", scope: "session" }]
+
+User: /pin all API calls must include error handling with try/catch
+→ pin [{ content: "all API calls must include error handling with try/catch", priority: "high", scope: "session" }]
+
+User: /pin prefer async/await over .then() chains
+→ pin [{ content: "prefer async/await over .then() chains", priority: "medium", scope: "session" }]
+</system-reminder>
