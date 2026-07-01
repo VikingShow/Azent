@@ -22,8 +22,9 @@ After evaluation:
 - If failed: you will receive feedback and should retry with improvements`,
 
       parameters: Parameters,
-      execute: (params, ctx) =>
+      execute: (args, ctx) =>
         Effect.gen(function* () {
+          const params = args as Schema.Schema.Type<typeof Parameters>
           const currentPhase = loop.getCurrentPhase(ctx.sessionID)
           if (!currentPhase) {
             return {

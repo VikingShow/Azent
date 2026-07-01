@@ -18,6 +18,8 @@ import { TaskTool, type TaskPromptOps } from "../../src/tool/task"
 import { Truncate } from "@/tool/truncate"
 import { ToolRegistry } from "@/tool/registry"
 import { RuntimeFlags } from "@/effect/runtime-flags"
+import { Zen } from "@azent/core/zen"
+import { Loop } from "../../src/session/loop/engine"
 import { disposeAllInstances } from "../fixture/fixture"
 import { testEffect } from "../lib/effect"
 import { ProviderV2 } from "@azent/core/provider"
@@ -46,6 +48,8 @@ const layer = (flags: Partial<RuntimeFlags.Info> = {}) =>
     ToolRegistry.defaultLayer,
     Database.defaultLayer,
     RuntimeFlags.layer(flags),
+    Zen.layer,
+    Loop.layer,
   ).pipe(Layer.provide(Ripgrep.defaultLayer))
 
 const it = testEffect(layer())

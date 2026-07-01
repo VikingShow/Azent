@@ -5,6 +5,8 @@ import { PlanExitTool } from "./plan"
 import { ZenBoundaryTool } from "./zen-boundary"
 import { ZenAwareTool } from "./zen-aware"
 import { ZenPinTool } from "./zen-pin"
+import { Zen } from "@azent/core/zen"
+import { Loop } from "../session/loop/engine"
 import { LoopCompleteTool } from "./loop-complete"
 import { Session } from "@/session/session"
 import { QuestionTool } from "./question"
@@ -351,6 +353,8 @@ export const defaultLayer = Layer.suspend(() =>
       Layer.provide(Format.defaultLayer),
       Layer.provide(CrossSpawnSpawner.defaultLayer),
       Layer.provide(Truncate.defaultLayer),
+      Layer.provide(Zen.layer),
+      Layer.provide(Loop.layer),
     )
     .pipe(Layer.provide(Database.defaultLayer), Layer.provide(RuntimeFlags.defaultLayer)),
 )
@@ -431,7 +435,9 @@ function isJsonSchemaObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
-export const node = LayerNode.make(layer.pipe(Layer.provide(Ripgrep.defaultLayer)), [
+export const node = LayerNode.make(
+  defaultLayer.pipe(Layer.provide(Ripgrep.defaultLayer)),
+  [
   Config.node,
   Plugin.node,
   Question.node,

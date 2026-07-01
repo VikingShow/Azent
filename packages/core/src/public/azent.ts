@@ -124,7 +124,6 @@ export const layer = Layer.effect(
   }),
 ).pipe(Layer.provide(Layer.merge(ApplicationToolsLayer, SessionsLayer)))
 
-// TODO: Add OpenCode.create(...) as the Promise facade over the same native API semantics.
+// TODO: Add Azent.create(...) as the Promise facade over the same native API semantics.
 
-export const OpenCode = Object.assign(Service, { layer })
-export type { Interface as AzentInterface }
+export const Azent = Object.assign(Service, { layer })

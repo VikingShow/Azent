@@ -1,8 +1,7 @@
 /** Intentional supported native API. Other core subpaths remain internal implementation surfaces. */
 export { Agent } from "./agent"
 export { Model } from "./model"
-export { OpenCode } from "./azent"
-export type { AzentInterface as Azent } from "./azent"
+export { Azent } from "./azent"
 export { Session } from "./session"
 export { Tool } from "./tool"
 export { Location } from "./location"

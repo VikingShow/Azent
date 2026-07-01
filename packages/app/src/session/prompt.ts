@@ -1394,7 +1394,7 @@ export const layer = Layer.effect(
 
             const zen = yield* Effect.serviceOption(Zen.ZenService)
             if (Option.isSome(zen)) {
-              const msg = handle.message as SessionV1.WithParts
+              const msg = handle.message as unknown as SessionV1.WithParts
               const lastText = msg.parts?.filter((p: any) => p.type === "text").map((p: any) => p.text).join(" ") ?? ""
               if (lastText.length > 20) {
                 const drift = yield* zen.value.checkDrift(sessionID, lastText)
