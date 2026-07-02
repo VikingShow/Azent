@@ -296,4 +296,39 @@ Azent 的四象限模型和 Zen Layer 是**有坚实理论基础和明确工程�
 ---
 
 *评估日期: 2026-07-02*
-*评估范围: Azent v0.3.4 + Phase 1-4 全部改动*
+*评估范围: Azent v0.3.4 + Phase 1-4 全部改动 + P0-P5 优化*
+
+---
+
+## 七、P0-P5 优化实施记录
+
+### P0 ✅ 修复人类确认链路
+- `tools.ts` Gate 强制处理所有返回类型：block/clarify/escalate/warn/allow
+- clarify: 返回结构化问题列表，要求使用 question 工具
+- escalate: 返回升级消息，要求重新声明 + 人类确认
+- warn: 允许执行但追加警告到输出
+
+### P1 ✅ 改进被拦截引导
+- `ZenState` 新增 `consecutiveBlocks` 和 `forceHumanConfirmation` 追踪
+- Gate 连续拦截 3 次后自动进入强制人类确认模式
+- block 消息中包含完整 `zen_boundary` JSON 调用示例
+- `declareBoundary` 重置拦截计数器
+
+### P2 ✅ Zen 状态可见性
+- `reminders.ts` 新增紧凑 `<zen_status>` 行：Gate 图标/置信度/Pin 数/拦截数
+- 漂移告警使用可视化边框格式 (╔═╗)，突出严重性
+- Step-by-step 恢复指令
+
+### P3 ✅ 漂移检测增强
+- 结构化告警框，区分 CRITICAL/WARNING 级别
+- escalation 消息包含清晰恢复步骤
+- `checkDriftDeep` 架构就绪，待 V2 LLM 基础设施接入
+
+### P4 ✅ V2 Runner Zen 集成
+- `run()` 函数中添加 `zen.init()`，确保 V2 会话拥有 Zen 状态
+- Gate enforcement TODO 更新
+
+### P5 ✅ Phase 级工具权限
+- `task.ts` sub-agent 创建时强制执行 `LoopPhase.toolPermissions`
+- 支持 deny 列表 + allow 列表过滤
+- allow 列表激活时，未列出的破坏性工具自动拒绝

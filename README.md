@@ -205,6 +205,23 @@ bun dev  # starts TUI in dev mode
 bun test # runs tests
 ```
 
+## Implementation Status
+
+| Component | Status | Details |
+|-----------|--------|---------|
+| Q2 Boundary Declaration | ✅ Complete | `zen_boundary` tool + Gate enforcement on edit/write/bash/shell/apply_patch |
+| Q3 Instruction Pinning | ✅ Complete | `zen_pin` tool + `/pin` command + auto-pin from AGENTS.md |
+| Drift Detection | ✅ Complete | Heuristic check + structured alerts + escalation on critical violations |
+| Human Confirmation Link | ✅ Complete | Gate clarify/escalate/warn enforced + auto-escalation after 3 blocks |
+| Zen Persistence | ✅ Complete | JSON file save/load per session |
+| Experience Memory | ✅ Complete | TF-IDF search with field boosting + in-memory cache |
+| Loop Mode | ✅ Complete | Multi-phase orchestration with pluggable evaluation + template store |
+| Auto-pinning | ✅ Complete | CRITICAL/NEVER/MUST constraints extracted from system instructions |
+| Phase Tool Permissions | ✅ Complete | LoopPhase.toolPermissions enforced in sub-agent creation |
+| V1 Path | ✅ Complete | Full Zen integration in prompt loop |
+| V2 Path | ⚠️ Partial | Zen init active, gate TODO marked, full integration pending |
+| TUI Visualization | ⚠️ Partial | Status line in context, visual drift alerts; TUI widget pending |
+
 ## License
 
 MIT — forked from [OpenCode](https://github.com/anomalyco/opencode)
