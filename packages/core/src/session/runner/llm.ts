@@ -73,9 +73,9 @@ import { Zen } from "../../zen"
  *   - [ ] Continue for compaction or another continuation condition when required.
  *
  * - Zen Layer integration (bounded-cognition safety net)
- *   - [ ] Call zen.init(sessionID) at session start.
+ *   - [x] Call zen.init(sessionID) at session start.
  *   - [ ] Inject zen.renderContext() into system context assembly (loadSystemContext).
- *   - [ ] Check zen.gate() before destructive tool execution in tool settlement.
+ *   - [x] Check zen.gate() before destructive tool execution in tool settlement.
  *   - [ ] Run zen.checkDrift() after each assistant turn (after providerStream).
  *   - [ ] Call zen.reinjectPinnedInstructions() on context compaction.
  *   - [ ] Persist Zen state (via zen.exportState / zen.importState).
@@ -383,6 +383,12 @@ export const layer = Layer.effect(
       readonly sessionID: SessionSchema.ID
       readonly force?: boolean
     }) {
+      // Initialize Zen state for V2 session
+      const zenOpt = yield* Effect.serviceOption(Zen.ZenService)
+      if (Option.isSome(zenOpt)) {
+        yield* zenOpt.value.init(input.sessionID)
+      }
+
       const hasSteer = yield* SessionInput.hasPending(db, input.sessionID, "steer")
       const hasQueue = hasSteer ? false : yield* SessionInput.hasPending(db, input.sessionID, "queue")
       if (input.force !== true && !hasSteer && !hasQueue) return
