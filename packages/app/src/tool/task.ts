@@ -13,6 +13,8 @@ import { Config } from "@/config/config"
 import { Effect, Exit, Schema, Scope } from "effect"
 import { EffectBridge } from "@/effect/bridge"
 import { RuntimeFlags } from "@/effect/runtime-flags"
+import { LoopService } from "../session/loop/engine"
+import { Option } from "effect"
 import { Database } from "@azent/core/database/database"
 
 export interface TaskPromptOps {
@@ -118,6 +120,30 @@ export const TaskTool = Tool.define(
         return yield* Effect.fail(new Error(`Unknown agent type: ${params.subagent_type} is not a valid agent type`))
       }
 
+      // Phase-level tool permissions: if an active Loop phase has toolPermissions,
+      // enforce explicit denies and allow-list filtering
+      const phaseToolDenies: Array<{ permission: string; pattern: string; action: "deny" }> = []
+      const loopOpt = yield* Effect.serviceOption(LoopService)
+      if (Option.isSome(loopOpt)) {
+        const phase = loopOpt.value.getCurrentPhase(ctx.sessionID)
+        if (phase?.toolPermissions) {
+          const tp = phase.toolPermissions as { allow?: string[]; deny?: string[] }
+          // Explicit denies from phase configuration
+          for (const tool of (tp.deny ?? [])) {
+            phaseToolDenies.push({ permission: tool, pattern: "*", action: "deny" as const })
+          }
+          // Allow-list: deny common tools not in the allow list
+          if ((tp.allow ?? []).length > 0) {
+            const commonTools = ["task", "edit", "write", "bash", "shell", "apply_patch"]
+            for (const tool of commonTools) {
+              if (!tp.allow!.includes(tool) && !tp.deny?.includes(tool)) {
+                phaseToolDenies.push({ permission: tool, pattern: "*", action: "deny" as const })
+              }
+            }
+          }
+        }
+      }
+
       const session = params.task_id
         ? yield* sessions.get(SessionID.make(params.task_id)).pipe(Effect.catchCause(() => Effect.succeed(undefined)))
         : undefined
@@ -127,6 +153,7 @@ export const TaskTool = Tool.define(
         subagent: next,
       })
       const childToolDenies = [
+        ...phaseToolDenies,
         ...(next.permission.some((rule) => rule.permission === "todowrite")
           ? []
           : [{ permission: "todowrite" as const, pattern: "*" as const, action: "deny" as const }]),

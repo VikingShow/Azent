@@ -1414,9 +1414,30 @@ export const layer = Layer.effect(
 
                   if (drift.suggestedFix.length > 0) {
                     const severity = hasCriticalViolation ? "CRITICAL" : "WARNING"
+                    const alertLines = [
+                      "",
+                      "╔══════════════════════════════════════════════╗",
+                      `║  🔴 ZEN DRIFT ${severity.padEnd(35)}║`,
+                      "╠══════════════════════════════════════════════╣",
+                      ...drift.violatedInstructions.map((v) =>
+                        `║  Pinned: ${v.instruction.slice(0, 35).padEnd(35)}║\n║  Violation: ${v.violation.slice(0, 33).padEnd(33)}║`
+                      ),
+                      "╠══════════════════════════════════════════════╣",
+                      `║  ${drift.suggestedFix.slice(0, 42).padEnd(42)}║`,
+                    ]
+                    if (hasCriticalViolation) {
+                      alertLines.push(
+                        "╠══════════════════════════════════════════════╣",
+                        "║  Gate has been CLOSED. You MUST:            ║",
+                        "║  1. Re-read pinned instructions             ║",
+                        "║  2. Call zen_boundary to re-declare         ║",
+                        "║  3. Confirm with user before continuing     ║",
+                      )
+                    }
+                    alertLines.push("╚══════════════════════════════════════════════╝")
                     msg.parts?.push({
                       type: "text" as const,
-                      text: `\n\n[Zen drift ${severity}: ${drift.suggestedFix}${hasCriticalViolation ? "\nGate has been closed. Re-declare your boundary (zen_boundary) before continuing." : ""}]`,
+                      text: alertLines.join("\n"),
                       synthetic: true,
                     } as any)
                   }

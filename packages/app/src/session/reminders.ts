@@ -27,16 +27,43 @@ export const apply = Effect.fn("SessionReminders.apply")(function* (input: {
 
   const zen = yield* Effect.serviceOption(Zen.ZenService)
   if (Option.isSome(zen)) {
-    const zenContext = yield* zen.value.renderContext(input.session.id)
-    if (zenContext) {
+    const zenState = yield* zen.value.getState(input.session.id)
+    if (zenState) {
+      // Compact status line — always visible in context
+      const gateIcon = zenState.gateOpen ? "🔓" : zenState.forceHumanConfirmation ? "🆘" : "🔒"
+      const pinSummary = zenState.pinnedInstructions.length > 0
+        ? ` | 📌 ${zenState.pinnedInstructions.length} pins`
+        : ""
+      const blockInfo = zenState.consecutiveBlocks > 0
+        ? ` | 🚫 ${zenState.consecutiveBlocks} blocks`
+        : ""
+      const statusLine = [
+        `<zen_status>${gateIcon} Gate: ${zenState.gateOpen ? "OPEN" : "CLOSED"}`,
+        ` | Confidence: ${zenState.confidenceLevel}${pinSummary}${blockInfo}`,
+        "</zen_status>",
+      ].join("")
+
       userMessage.parts.push({
         id: PartID.ascending(),
         messageID: userMessage.info.id,
         sessionID: userMessage.info.sessionID,
         type: "text",
-        text: zenContext,
+        text: statusLine,
         synthetic: true,
       } as SessionV1.TextPart)
+
+      // Full Zen context with detailed state
+      const zenContext = yield* zen.value.renderContext(input.session.id)
+      if (zenContext) {
+        userMessage.parts.push({
+          id: PartID.ascending(),
+          messageID: userMessage.info.id,
+          sessionID: userMessage.info.sessionID,
+          type: "text",
+          text: zenContext,
+          synthetic: true,
+        } as SessionV1.TextPart)
+      }
     }
   }
 
