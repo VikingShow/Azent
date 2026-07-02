@@ -99,6 +99,8 @@ export interface ZenState {
   pinnedInstructions: (typeof PinnedInstruction.Type)[]
   gateOpen: boolean
   confidenceLevel: "high" | "medium" | "low" | "unknown"
+  consecutiveBlocks: number
+  forceHumanConfirmation: boolean
   declaredCapabilities: Array<{
     domain: string
     detail: string
@@ -173,6 +175,8 @@ export const layer = Layer.effect(
             pinnedInstructions: [],
             gateOpen: false,
             confidenceLevel: "unknown",
+            consecutiveBlocks: 0,
+            forceHumanConfirmation: false,
             declaredCapabilities: [],
           })
         }
@@ -189,6 +193,7 @@ export const layer = Layer.effect(
         const s = state.get(sessionID)
         if (!s) return
         s.boundary = declaration
+        s.consecutiveBlocks = 0
         const hasUncertainties = declaration.unknowns.length > 0
         const hasLowConfidence = declaration.implicitKnowledge.some(
           (k) => k.confidence === "low",
@@ -210,12 +215,48 @@ export const layer = Layer.effect(
         const s = state.get(sessionID)
         if (!s) return { type: "block", reason: "Zen not initialized", requiredAction: "Initialize Zen session first" } as const
 
-        if (s.gateOpen) return { type: "allow" } as const
+        if (s.gateOpen) {
+          s.consecutiveBlocks = 0
+          return { type: "allow" } as const
+        }
+
+        s.consecutiveBlocks++
+        if (s.consecutiveBlocks >= 3) {
+          s.forceHumanConfirmation = true
+        }
 
         if (!s.boundary) {
+          const exampleCall = [
+            "Example zen_boundary call:",
+            '{',
+            '  "understanding": "I need to modify the auth middleware to support JWT tokens",',
+            '  "assumptions": ["The existing session-based auth can coexist with JWT"],',
+            '  "implicitKnowledge": [',
+            '    {"domain": "Express middleware", "whatIKnow": "Middleware order matters", "source": "training_data", "confidence": "high"},',
+            '    {"domain": "JWT", "whatIKnow": "Standard RS256 signing", "source": "common_convention", "confidence": "medium"}',
+            '  ],',
+            '  "plan": "1. Read current auth.ts 2. Add JWT verification 3. Update tests",',
+            '  "unknowns": [{"topic": "Token refresh", "whyImportant": "UX impact", "suggestedQuestion": "Should I implement token refresh now or later?"}]',
+            '}',
+          ].join("\n")
+          const message = s.forceHumanConfirmation
+            ? [
+                "⚠️  AUTO-ESCALATION: You have been blocked 3 times without declaring a boundary.",
+                "The system has entered FORCED HUMAN CONFIRMATION mode.",
+                "",
+                "You MUST use the question tool to ask the user for guidance before any",
+                "further destructive actions. Explain what you're trying to do and why",
+                "you haven't declared a boundary.",
+              ].join("\n")
+            : [
+                "No boundary declared. You are operating on implicit assumptions (Q2).",
+                "Call zen_boundary to declare your understanding, assumptions, and plan.",
+                "",
+                exampleCall,
+              ].join("\n")
           return {
             type: "block",
-            reason: "No boundary declared. You are operating on implicit assumptions (Q2).",
+            reason: message,
             requiredAction: "Call zen_boundary to declare your understanding, assumptions, and plan before executing destructive actions.",
           } as const
         }
