@@ -90,12 +90,65 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
               const zen = yield* Effect.serviceOption(Zen.ZenService)
               if (Option.isSome(zen)) {
                 const gateResult = yield* zen.value.gate(ctx.sessionID, { tool: item.id, pattern: "*", context: "" })
-                if (gateResult.type === "block") {
-                  return {
-                    title: "Zen Gate blocked",
-                    output: `${gateResult.reason}\n\n${gateResult.requiredAction}`,
-                    metadata: { zenBlocked: true },
-                  }
+                switch (gateResult.type) {
+                  case "block":
+                    return {
+                      title: "Zen Gate blocked — boundary not declared",
+                      output: [
+                        `🚫 ${gateResult.reason}`,
+                        "",
+                        gateResult.requiredAction,
+                        "",
+                        "You MUST call zen_boundary to declare your understanding, assumptions,",
+                        "knowledge sources, plan, and unknowns before using destructive tools.",
+                      ].join("\n"),
+                      metadata: { zenBlocked: true, zenGateResult: "block" },
+                    }
+                  case "clarify":
+                    return {
+                      title: "Zen Gate — human confirmation required",
+                      output: [
+                        "⚠️  Your boundary has been declared but confidence is LOW.",
+                        "",
+                        "Before proceeding, you MUST confirm the following with the user",
+                        "using the question tool:",
+                        "",
+                        ...gateResult.questions.map((q, i) => `  ${i + 1}. ${q}`),
+                        "",
+                        "ACTION REQUIRED: Use the question tool to ask the user about these",
+                        "uncertainties. Do NOT proceed until the user has confirmed.",
+                      ].join("\n"),
+                      metadata: { zenBlocked: true, zenGateResult: "clarify", zenQuestions: gateResult.questions },
+                    }
+                  case "escalate":
+                    return {
+                      title: "Zen Gate — escalated (drift detected)",
+                      output: [
+                        "🔴 CRITICAL: A pinned instruction has been violated.",
+                        "",
+                        gateResult.reason,
+                        "",
+                        "The Gate has been closed. You MUST:",
+                        "1. Re-read the pinned instructions in <zen_layer>",
+                        "2. Call zen_boundary to re-declare your understanding",
+                        "3. Confirm with the user before proceeding",
+                      ].join("\n"),
+                      metadata: { zenBlocked: true, zenGateResult: "escalate" },
+                    }
+                  case "warn":
+                    // Allow execution but append warning to result
+                    {
+                      const result = yield* item.execute(args, ctx)
+                      return {
+                        ...result,
+                        title: `${result.title} [Zen warning]`,
+                        output: `${result.output}\n\n⚠️  Zen warning: ${gateResult.reason}`,
+                        metadata: { ...result.metadata, zenWarning: gateResult.reason },
+                      } as any
+                    }
+                  case "allow":
+                    // Normal execution — fall through to below
+                    break
                 }
               }
             }

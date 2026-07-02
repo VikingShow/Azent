@@ -388,9 +388,28 @@ export const layer = Layer.effect(
         const s = state.get(sessionID)
         if (!s) return ""
         const parts: string[] = ["<zen_layer>"]
-        parts.push(`Gate: ${s.gateOpen ? "OPEN" : "CLOSED"}`)
-        if (!s.gateOpen) {
-          parts.push("ACTION REQUIRED: Declare your boundary before executing destructive tools (edit/write/bash).")
+        if (s.gateOpen) {
+          parts.push("🔓 Gate: OPEN — destructive tools are available.")
+        } else if (!s.boundary) {
+          parts.push("🔒 Gate: CLOSED — no boundary declared.")
+          parts.push("")
+          parts.push("ACTION REQUIRED: You MUST call zen_boundary to declare:")
+          parts.push("  - Your understanding of the task")
+          parts.push("  - Your assumptions")
+          parts.push("  - Your implicit knowledge sources and confidence levels")
+          parts.push("  - Your plan")
+          parts.push("  - Any unknowns that need user clarification")
+          parts.push("")
+          parts.push("CRITICAL RULE: If you are UNSURE about anything, you MUST use the")
+          parts.push("question tool to confirm with the user BEFORE proceeding.")
+        } else if (s.confidenceLevel === "low") {
+          parts.push("⚠️  Gate: CLARIFICATION NEEDED — boundary declared but confidence is LOW.")
+          parts.push("")
+          parts.push("ACTION REQUIRED: You MUST use the question tool to confirm")
+          parts.push("uncertainties with the user before proceeding with destructive tools.")
+        } else {
+          parts.push("🔒 Gate: CLOSED — escalation or re-verification required.")
+          parts.push("Call zen_boundary to re-declare your boundary.")
         }
         if (s.boundary) {
           parts.push(`Understanding: ${s.boundary.understanding.slice(0, 200)}`)
